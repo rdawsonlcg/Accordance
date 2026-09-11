@@ -18,12 +18,16 @@
 //   - core/db.js: createTableAccessor, fetchAllRows
 //   - shared/adminUtils.js: makeAdminDragReorder
 //   - shared/videoPlayer.js: isDirectVideoUrl, toYouTubeEmbedUrl, openFsvPlayer
-//   - app.js: escapeHtml, fixMojibakeText, currentUser, the generic HTML5
-//     audio player controls (initAudio/togglePlay/etc.), shareBookSession,
+//   - app.js: escapeHtml, fixMojibakeText, currentUser, shareBookSession,
 //     markBookResourceClicked, switchTab/switchStudySubTab,
 //     updateStudyNotificationBadges, and the BIBLE_STUDIES_* book-list
 //     constants (also needed by Church Resources and the scripture
 //     auto-linker, both of which stayed in app.js, so those constants did
+//     too rather than moving somewhere only this module could reach).
+// Also renders onclick/oninput attributes that reference
+// shared/audioPlayer.js's controls (togglePlay, skipAudio, etc.) by name --
+// those resolve through the global scope at click time, same as any other
+// onclick handler, so this file doesn't need to import them itself.
 //     too rather than moving somewhere only this module could reach).
 // app.js in turn imports this module's own exports back — another genuine
 // circular dependency, handled the same documented way as the one between
@@ -38,7 +42,6 @@ import { isDirectVideoUrl, toYouTubeEmbedUrl, openFsvPlayer } from './videoPlaye
 import {
   escapeHtml, fixMojibakeText, currentUser, shareBookSession, markBookResourceClicked,
   switchTab, switchStudySubTab, updateStudyNotificationBadges,
-  initAudio, togglePlay, resetPlayButton, skipAudio, updateProgress, seekAudio,
   BIBLE_STUDIES_BOOK_ORDER, BIBLE_STUDIES_DATA, BIBLE_STUDIES_DEFAULT_COLORS,
   BIBLE_STUDIES_DEFAULT_HEIGHTS, OT_BOOK_COUNT
 } from '../app.js';

@@ -56,6 +56,19 @@ double-click open, upload, or share — nothing changes about how you use it.
   build. The same badge-check exclusion pattern as `byTheBook.js` applies
   here too: `checkTWModuleCompletionBadges`/`checkTWCourseCompletionBadges`
   stayed in `app.js` with the rest of the badge system.
+- **`shared/audioPlayer.js`** — the plain HTML5 `<audio>` controls used
+  wherever the app plays a simple audio clip inline (Church Resources, By the
+  Book, Core-D, and TW Bible Course alike): play/pause, skip forward/back,
+  the scrub bar, and the time display. Completely self-contained — no
+  imports, no cross-module state — since every function just looks up DOM
+  elements by a shared id convention. The simplest extraction so far: no
+  circular dependency, no load-order hazard, nothing to re-point. Turned up
+  one small piece of dead code along the way — `shared/byTheBook.js` was
+  importing these six names from `app.js` even though it only ever
+  referenced them inside onclick-attribute HTML strings (which resolve
+  through the global scope at click time, not through a module's own
+  imports) — removed as part of this pass.
+
 - **`shared/coreD.js`** — the Core-D study feature: class/session data,
   category filters and search, the learner-facing list and detail panel
   (including the inline Knowledge Check flow), the shared content renderer
@@ -143,7 +156,7 @@ whole point of modularizing in the first place.
 
 ## What's next
 
-Six pieces down (`core/db.js`, `shared/adminUtils.js`, `shared/videoPlayer.js`, `shared/byTheBook.js`, `shared/twBibleCourse.js`, `shared/coreD.js`). All three study features are now their own modules — everything else the app does (auth/session handling, tab navigation, the Bible reading view and search, Records/badges, reading plans, Cords, Settings, and Church Resources) is still in `app.js`, with no committed plan to split it further.
+Six pieces down (`core/db.js`, `shared/adminUtils.js`, `shared/videoPlayer.js`, `shared/byTheBook.js`, `shared/twBibleCourse.js`, `shared/coreD.js`, `shared/audioPlayer.js`) — seven, counting the audio player. All three study features and every widely-shared utility flagged along the way are now their own modules. Everything else the app does (auth/session handling, tab navigation, the Bible reading view and search, Records/badges, reading plans, Cords, Settings, and Church Resources) is still in `app.js`, with no committed plan to split it further.
 The natural next candidates, following the same one-piece-at-a-time approach as the rest of
 this cleanup: each of the three study features (Core-D, TW Bible Course, By
 the Book) as their own modules — they're the biggest remaining chunks of

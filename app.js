@@ -6,6 +6,9 @@ import {
   profilesTable
 } from './core/db.js';
 import {
+  initAudio, togglePlay, resetPlayButton, skipAudio, updateProgress, seekAudio
+} from './shared/audioPlayer.js';
+import {
   makeAdminDragReorder, makeAdminQuizArrayController, renderAdminQuizEditorBlock,
   foundationsRowsToMarkdownTable, foundationsParseDelimitedText, htmlToFoundationsMarkdown,
   insertConvertedTextAtCursor, insertTableAtCursor, applyContentFormat,
@@ -6312,61 +6315,6 @@ export {
 
 
 
-function togglePlay(i) {
-  const audio = document.getElementById(`audio-player-${i}`);
-  const btn = document.getElementById(`play-btn-${i}`);
-  if (audio.paused) {
-    audio.play();
-    btn.textContent = '❚❚';
-  } else {
-    audio.pause();
-    btn.textContent = '▶';
-  }
-}
-
-function resetPlayButton(i) {
-  const btn = document.getElementById(`play-btn-${i}`);
-  if (btn) btn.textContent = '▶';
-}
-
-function skipAudio(elementId, seconds) {
-  const audio = document.getElementById(elementId);
-  if (audio) {
-    audio.currentTime = Math.min(Math.max(audio.currentTime + seconds, 0), audio.duration);
-  }
-}
-
-function updateProgress(i) {
-  const audio = document.getElementById(`audio-player-${i}`);
-  const progress = document.getElementById(`progress-${i}`);
-  const timeDisplay = document.getElementById(`time-${i}`);
-  if (audio && audio.duration) {
-    progress.value = (audio.currentTime / audio.duration) * 100;
-    timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
-  }
-}
-
-function seekAudio(i, value) {
-  const audio = document.getElementById(`audio-player-${i}`);
-  if (audio && audio.duration) {
-    audio.currentTime = (value / 100) * audio.duration;
-  }
-}
-
-function initAudio(i) {
-  const audio = document.getElementById(`audio-player-${i}`);
-  const timeDisplay = document.getElementById(`time-${i}`);
-  if (audio && audio.duration) {
-    timeDisplay.textContent = `0:00 / ${formatTime(audio.duration)}`;
-  }
-}
-
-function formatTime(seconds) {
-  if (isNaN(seconds)) return "0:00";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s < 10 ? '0' : ''}${s}`;
-}
 
 
 // ----------------------------------------------------------------------------
