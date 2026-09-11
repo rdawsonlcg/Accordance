@@ -1,0 +1,2091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- If added to a phone's home screen, these let it launch with zero browser
+       chrome at all (the only way to get a truly chrome-free view on mobile —
+       a page open in a normal browser tab can never hide the browser's own UI). -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Accordance</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+    /* =========================================
+       STYLE GUIDE (Easily Editable Variables)
+       ========================================= */
+    :root {
+      --primary-color: #6366f1;
+      --primary-hover: #4f46e5;
+      --secondary-color: #1e293b;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --accent-teal: #0d9488;
+      --accent-coral: #e11d48;
+      --accent-yellow: #ca8a04;
+      --accent-purple: #7c3aed;
+      --font-family: 'Inter', -apple-system, sans-serif;
+      --font-heading: 'Bebas Neue', Impact, sans-serif;
+      --border-radius: 4px;
+      --spacing-sm: 8px;
+      --spacing-md: 16px;
+      --spacing-lg: 24px;
+    }
+
+    /* Dark Mode — toggled from Settings, applied as a class on <body> and
+       persisted in localStorage. Most components already read the variables
+       above, so redefining them here re-themes the whole app; a handful of
+       spots that use plain rgba(255,255,255,...) fills are overridden below. */
+    body.dark-mode {
+      --secondary-color: #cbd5e1;
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+    }
+    body.dark-mode .nav-tabs { background: rgba(30, 41, 59, 0.95); }
+    body.dark-mode .login-box { box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+
+    * { box-sizing: border-box; }
+    body { font-family: var(--font-family); background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: var(--text-main); margin: 0; padding: 0; padding-bottom: calc(80px + env(safe-area-inset-bottom)); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); min-height: 100dvh; }
+    
+    .container { max-width: 1400px; margin: 0 auto; padding: var(--spacing-md); }
+    
+    /* Login Screen */
+    /* Login is a popup modal, not the app's first screen — it starts hidden (JS
+       toggles display:flex to open it) and, being fixed + flex-centered on the
+       viewport itself rather than flowing inside .container, it lands perfectly
+       centered regardless of .container's width, including on a wide desktop
+       window where the old inline-block/text-align approach could drift off-center. */
+    #login-screen { display: none; position: fixed; inset: 0; background: rgba(15,15,20,0.55); z-index: 3000; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+    .login-box { position: relative; background: var(--card-bg); padding: var(--spacing-lg); border-radius: var(--border-radius); box-shadow: 0 20px 50px rgba(0,0,0,0.25); width: 100%; max-width: 400px; border: 1px solid var(--border-color); max-height: 90vh; overflow-y: auto; }
+    #login-modal-close-btn { position: absolute; top: 10px; right: 12px; background: none; border: none; font-size: 24px; line-height: 1; color: var(--text-muted); cursor: pointer; padding: 4px 8px; }
+    #login-modal-close-btn:hover { color: var(--text-main); }
+    .login-box h2 { font-family: var(--font-heading); font-size: 36px; letter-spacing: 1px; color: var(--text-main); }
+    .input-field { width: 100%; padding: 12px; margin-bottom: var(--spacing-md); border: 1px solid var(--border-color); border-radius: var(--border-radius); font-size: 16px; background-color: var(--card-bg); color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; }
+    .btn { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: white; border: none; padding: 12px 20px; border-radius: 9999px; cursor: pointer; font-size: 16px; width: 100%; font-weight: 600; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3); transition: transform 0.15s ease, box-shadow 0.15s ease; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4); background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%); }
+    
+    /* App Navigation & Header */
+    #app-screen { display: none; }
+    .header { text-align: center; margin-bottom: 20px; color: var(--text-main); }
+    .header h2 { margin: 0 0 10px 0; color: var(--text-main); font-family: var(--font-heading); font-size: 48px; letter-spacing: 1.5px; }
+    .user-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); font-size: 14px; color: var(--text-muted); font-family: 'Plus Jakarta Sans', sans-serif; }
+    .user-info-block { display: flex; flex-direction: column; gap: 6px; }
+    .user-info-line { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
+    .user-info-actions { display: flex; align-items: center; gap: 12px; }
+    /* Mobile: stack "Logged in as:" and the username onto their own rows,
+       so the info block reads as three rows total (label / username / gear+logout). */
+    @media (max-width: 600px) {
+      .user-info-line { flex-direction: column; align-items: flex-start; gap: 2px; }
+    }
+
+    .nav-tabs { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; justify-content: space-around; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 15px 10px; margin-bottom: 0; z-index: 1000; border-radius: 20px 20px 0 0; border-top: 1px solid var(--border-color); box-shadow: 0 -4px 20px rgba(0,0,0,0.05); }
+    /* Floating "now playing" bar — shown only while an audio/video started
+       somewhere in the app is still going but its own player has scrolled
+       off-screen or sits in a tab the user has since navigated away from.
+       Positioned dynamically just above .nav-tabs (see positionMiniPlayer()),
+       since the nav bar's own height can vary. */
+    .media-mini-player { position: fixed; left: 0; width: 100%; z-index: 999; display: none; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.97); backdrop-filter: blur(10px); padding: 8px 14px; border-top: 1px solid var(--border-color); box-shadow: 0 -4px 14px rgba(0,0,0,0.08); box-sizing: border-box; }
+    .media-mini-player.visible { display: flex; }
+    body.dark-mode .media-mini-player { background: rgba(30, 41, 59, 0.97); }
+    .media-mini-player-icon { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); display: flex; align-items: center; justify-content: center; color: #fff; }
+    .media-mini-player-title-wrap { flex: 1 1 0; min-width: 0; overflow: hidden; position: relative; height: 17px; }
+    .media-mini-player-title { position: absolute; left: 0; top: 0; white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; }
+    .media-mini-player-title.scrolling { animation-name: media-mini-player-scroll; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+    @keyframes media-mini-player-scroll { 0%, 8% { transform: translateX(0); } 45%, 55% { transform: translateX(var(--media-mini-scroll-distance, 0px)); } 92%, 100% { transform: translateX(0); } }
+    .media-mini-player-btn { flex-shrink: 0; background: rgba(99, 102, 241, 0.14); border: none; color: var(--primary-color); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .nav-btn { flex: 1; background: transparent; border: none; padding: 10px 5px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-muted); border-radius: 12px; white-space: nowrap; font-family: 'Plus Jakarta Sans', sans-serif; transition: all 0.2s; position: relative; }
+    .nav-badge { position: absolute; top: 2px; right: 10px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #ffffff; font-size: 11px; font-weight: 700; display: none; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 2px 6px rgba(0,0,0,0.25); line-height: 1; }
+    /* Same bubble as .nav-badge, colors inverted (white bg / purple number) — used
+       for the Cords header icon, which sits on the header's own purple gradient
+       background where a purple-on-purple badge would barely show up. */
+    .nav-badge-inverse { position: absolute; top: 2px; right: 4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: #ffffff; color: #6366f1; font-size: 11px; font-weight: 800; display: none; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 2px 6px rgba(0,0,0,0.25); line-height: 1; }
+
+    /* Header icon buttons (MyMargins / Records / Cords): scale up and thicken lines while their view is open */
+    .header-icon-btn { transition: transform 0.18s ease; }
+    .header-icon-btn.selected { transform: scale(1.15); }
+    .header-icon-img { transition: filter 0.18s ease; }
+    .header-icon-btn.selected .header-icon-img { filter: drop-shadow(0 0 0.4px #ffffff) drop-shadow(0 0 0.4px #ffffff); }
+    .records-icon-svg path, .records-icon-svg circle { transition: stroke-width 0.18s ease; }
+    .header-icon-btn.selected .records-icon-svg path, .header-icon-btn.selected .records-icon-svg circle { stroke-width: 2.3; }
+    .reading-notif-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; cursor: pointer; font-weight: 700; color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; }
+    .reading-notif-body { padding: 0 14px 12px 14px; color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; cursor: pointer; }
+    .reading-notif-body.collapsed { display: none; }
+
+    /* Bible Studies bookshelf — color-code reference (dimension-line style rulers
+       + a swatch legend for each testament) shown above the shelf itself. Both
+       the ruler line AND its swatch legend are pixel-aligned to the actual
+       Genesis/Malachi and Matthew/Revelation spines below them, and the whole
+       thing (line + swatches together, per testament) scrolls in lockstep with
+       the shelf — see renderBibleStudyRuler(). The two testament sections and
+       the spacers between/before them are all sized by JS to match real spine
+       positions; the flex row's natural height (rather than a fixed one) is
+       what lets each section's swatches wrap onto more than one line.
+    */
+    .bible-study-legend { margin-top: 22px; }
+    .bible-study-ruler-viewport { position: relative; overflow: hidden; }
+    .bible-study-ruler-track { position: relative; display: flex; align-items: flex-start; will-change: transform; }
+    .bible-study-ruler-spacer { flex-shrink: 0; }
+    .bible-study-legend-section { flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; padding-bottom: 4px; }
+    /* The whole line — both end ticks plus the connecting rule — is drawn as
+       ONE <svg>, sized via width/height attributes (not CSS-stretched, no
+       viewBox scaling) that JS sets to match the line's real pixel width
+       exactly, with shape-rendering:crispEdges so the renderer snaps every
+       stroke edge to the device pixel grid instead of anti-aliasing it. Two
+       CSS box-model ticks (even ones pinned with left:0/right:0) each get
+       independently rounded/positioned by the browser's own box layout, and
+       in practice that let one render visibly thicker than the other; one
+       SVG has no such per-element rounding to go wrong. The testament label
+       sits on top as ordinary HTML text with a background matching the
+       panel behind it, masking the line where the text overlaps — the
+       classic "divider with text" look — so its width never has to be
+       measured or reserved for in the line's own geometry.
+    */
+    .bible-study-dim-line { position: relative; height: 15px; }
+    .bible-study-dim-line-svg { position: absolute; top: 0; left: 0; display: block; }
+    .bible-study-dim-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card-bg); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12.5px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: var(--primary-color); white-space: nowrap; padding: 0 8px; }
+    .bible-study-color-codes { display: flex; flex-wrap: wrap; gap: 7px 16px; }
+    .bible-study-color-code-item { display: flex; align-items: center; gap: 6px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; color: var(--text-main); white-space: nowrap; }
+    .bible-study-color-code-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+    .bible-study-color-code-empty { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; color: var(--text-muted); font-style: italic; white-space: nowrap; }
+
+    .bible-study-shelf {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 40px 16px 20px 16px;
+      margin-top: 16px;
+      background: linear-gradient(to bottom, transparent 0%, transparent calc(100% - 12px), #d6d3c9 calc(100% - 12px), #b8b4a4 100%);
+      border-radius: var(--border-radius);
+    }
+    .book-spine {
+      flex-shrink: 0;
+      width: 32px;
+      border-radius: 3px 3px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.2s ease, box-shadow 0.3s ease;
+      box-shadow: 1px 0 0 rgba(0,0,0,0.08) inset, -1px 0 0 rgba(255,255,255,0.15) inset;
+    }
+    .book-spine:hover { transform: translateY(-4px); }
+    .book-spine.selected { transform: translateY(-12px); box-shadow: 0 0 10px 2px rgba(255,255,255,0.85), 0 0 26px 7px rgba(168,85,247,0.85); z-index: 2; }
+    .book-spine.not-live { opacity: 0.4; cursor: not-allowed; }
+    .book-spine.not-live:hover { transform: none; }
+    .book-spine-label {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      color: #ffffff;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+      padding: 6px 0;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .bible-study-info-panel {
+      margin-top: 20px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* Books of the Bible: clickable presenter card (filters sessions by that presenter) */
+    .study-presenter-chip { border-radius: var(--border-radius); padding: 4px; margin: -4px; transition: background 0.15s; }
+    .study-presenter-chip:hover { background: var(--bg-color); }
+    .study-presenter-chip.active { background: rgba(99, 102, 241, 0.1); }
+
+    /* Books of the Bible: Listen / Watch / Read view tabs */
+    .study-filter-chip { background: #e2e8f0; border: none; padding: 6px 14px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-main); border-radius: 999px; font-family: 'Plus Jakarta Sans', sans-serif; transition: background 0.2s; }
+    .study-filter-chip.active { background: var(--primary-color); color: #fff; }
+    .study-filter-chip.disabled { opacity: 0.4; }
+
+    /* Generic single-row horizontal slider: used for the presenter list and the
+       Listen/Watch/Read view tabs — keeps everything on one row, scrolling within its
+       own container instead of wrapping or overflowing the page. */
+    .study-hscroll { display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+
+    /* Study nav-tab sub-option row (TW Bible Course / Line Upon Line / By the Book):
+       same single-row slider treatment. Setting overflow-x here implicitly turns
+       overflow-y into "auto" too (that's how CSS overflow works), which would
+       otherwise slice off the top of each button's notification badge — it's
+       positioned with a negative top offset so it can poke up and out over the
+       button's corner. padding-top gives it room to do that without being clipped. */
+    .study-sub-tabs-row { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 10px 2px 4px; }
+    .study-sub-tabs-row .study-sub-btn { flex-shrink: 0; white-space: nowrap; }
+
+    /* One-time hint nudge: a slight leftward bounce shown when the Study tab opens,
+       telling the user there are more sub-options hidden off to the side. Purely a
+       transform (doesn't touch actual scroll position), so it's safe to replay anytime. */
+    @keyframes studySubTabsBounceHint {
+      0%   { transform: translateX(0); }
+      30%  { transform: translateX(-14px); }
+      55%  { transform: translateX(4px); }
+      78%  { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+    }
+    .study-sub-tabs-row.bounce-hint { animation: studySubTabsBounceHint 0.9s ease-in-out; }
+
+    /* Books of the Bible admin editor (Manage Content) */
+    .book-admin-field-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .book-admin-field-row label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
+    .book-admin-item-card { border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--bg-color); padding: 12px; margin-bottom: 10px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .book-admin-item-card .book-admin-field-row { margin-bottom: 10px; }
+    .book-admin-item-card .book-admin-field-row:last-child { margin-bottom: 0; }
+    .session-drag-card { cursor: grab; transition: border-color 0.15s, box-shadow 0.15s; }
+    .session-drag-card.dragging { opacity: 0.4; cursor: grabbing; }
+    .session-drag-card.drag-over { border-color: var(--primary-color); box-shadow: 0 0 0 2px var(--primary-color) inset; }
+    .session-drag-handle { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; font-weight: 700; margin-bottom: 10px; user-select: none; }
+    .session-drag-handle svg { flex-shrink: 0; }
+
+    /* Records view */
+    .record-section { margin-bottom: 22px; }
+    .record-section-header { font-family: var(--font-heading); font-size: 18px; color: var(--text-main); padding-bottom: 6px; margin-bottom: 12px; border-bottom: 2px solid var(--border-color); }
+    .record-grid { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px; margin-top: 4px; }
+    .record-badge-card { position: relative; cursor: pointer; border-radius: 12px; padding: 16px 8px; text-align: center; transition: transform 0.15s; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--card-bg); border: 1px solid var(--border-color); flex: 1 1 100px; max-width: 140px; }
+    .record-badge-card:hover { transform: translateY(-3px); }
+    .record-badge-card.achieved { border-color: transparent; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08); }
+    .record-badge-card.locked { border-style: dashed; opacity: 0.85; }
+    /* A "set" — several badges of the same trigger type (e.g. Margin Notes at
+       different thresholds) grouped visually so they read as one escalating
+       series rather than scattered individual badges. Sorted lowest to
+       highest by getGroupedRecordBadgeSections/sortBadgesForSet. */
+    .record-badge-set { flex: 1 1 auto; border: 1px dashed var(--border-color); border-radius: 12px; padding: 10px 8px 8px; }
+    .record-badge-set-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin: 0 0 8px 2px; }
+    .record-badge-set-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .record-badge-set-row .record-badge-card { border-style: solid; }
+    .record-badge-set-row .record-badge-card.locked { border-style: dashed; }
+    .record-badge-icon-circle { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; border: 2px solid var(--border-color); background: var(--bg-color); }
+    .record-badge-card.achieved .record-badge-icon-circle { border-color: var(--badge-hue-color, var(--primary-color)); background: color-mix(in srgb, var(--badge-hue-color, var(--primary-color)) 16%, var(--card-bg)); }
+    .record-badge-card.locked .record-badge-icon-circle { filter: grayscale(1); opacity: 0.7; }
+    .record-badge-icon { display: block; font-size: 26px; line-height: 1; }
+    .record-badge-icon img { width: 28px; height: 28px; object-fit: contain; }
+    .record-badge-card.achieved .record-badge-icon { color: var(--badge-hue-color, var(--primary-color)); }
+    .record-badge-lock-icon { width: 20px; height: 20px; color: var(--text-muted); }
+    .record-badge-title { font-size: 12px; font-weight: 700; color: var(--text-main); }
+    .record-badge-card.locked .record-badge-title { color: var(--text-muted); }
+    /* Shared top-right "status chip" spot — a plain checkmark for a one-time
+       achievement, or the repeat count for a tallied one, always in the same
+       place so the two read as the same kind of indicator. */
+    .record-badge-corner { position: absolute; top: 6px; right: 6px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #ffffff; border: 2px solid var(--card-bg); box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+    .record-badge-corner.check { background: var(--accent-teal); }
+    .record-badge-corner.check svg { width: 11px; height: 11px; display: block; }
+    .record-badge-corner.tally { background: var(--badge-hue-color, var(--primary-color)); }
+    .record-badge-progress-track { margin-top: 8px; height: 4px; border-radius: 999px; background: var(--border-color); overflow: hidden; }
+    .record-badge-progress-fill { height: 100%; background: var(--badge-hue-color, var(--primary-color)); }
+    .record-badge-progress-label { margin-top: 4px; font-size: 10px; color: var(--text-muted); }
+    /* A badge's description/status now renders right under its own section
+       (see selectRecordBadge) instead of at the bottom of the whole Records
+       view — this is that per-section slot, hidden until a badge in that
+       section is tapped. */
+    .record-section-detail { margin-top: 14px; }
+    @media (max-width: 600px) {
+      /* Exactly 4 badges per row on mobile, regardless of how narrow the
+         viewport gets. */
+      .record-badge-card { flex: 0 0 calc(25% - 11px); max-width: none; padding: 10px 4px; }
+      .record-badge-set-row .record-badge-card { flex-basis: calc(25% - 8px); }
+      .record-badge-icon-circle { width: 40px; height: 40px; margin-bottom: 6px; }
+      .record-badge-icon { font-size: 19px; }
+      .record-badge-icon img { width: 20px; height: 20px; }
+      .record-badge-lock-icon { width: 16px; height: 16px; }
+      .record-badge-title { font-size: 10.5px; }
+      .record-badge-corner { min-width: 17px; height: 17px; font-size: 10px; }
+    }
+
+    /* Settings view */
+    .settings-section { margin-bottom: 28px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .settings-label { display: block; font-weight: 700; font-size: 15px; color: var(--text-main); margin-bottom: 4px; }
+    .settings-hint { font-size: 13px; color: var(--text-muted); line-height: 1.4; margin: 0 0 10px 0; }
+    .settings-toggle-row { display: flex; align-items: center; justify-content: space-between; max-width: 220px; font-size: 14px; color: var(--text-main); }
+    .theme-switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0; }
+    .theme-switch input { opacity: 0; width: 0; height: 0; }
+    .theme-switch-slider { position: absolute; cursor: pointer; inset: 0; background-color: var(--border-color); transition: 0.2s; border-radius: 999px; }
+    .theme-switch-slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: #ffffff; transition: 0.2s; border-radius: 50%; }
+    .theme-switch input:checked + .theme-switch-slider { background-color: var(--primary-color); }
+    .theme-switch input:checked + .theme-switch-slider:before { transform: translateX(20px); }
+    .settings-radio-option { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+    .settings-radio-option:last-of-type { border-bottom: none; }
+    .settings-radio-option input[type="radio"] { margin-top: 3px; flex-shrink: 0; accent-color: var(--primary-color); width: 16px; height: 16px; cursor: pointer; }
+    .settings-radio-text { display: flex; flex-direction: column; gap: 2px; }
+    .settings-radio-title { font-weight: 700; font-size: 14px; color: var(--text-main); }
+    .settings-radio-desc { font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }
+    .settings-danger-zone { border-top: 1px solid var(--border-color); padding-top: 20px; }
+
+    /* Cords view — remodeled after an Instagram-DM-style outline (avatar circles,
+       borderless rows, pill inputs, rounded chat bubbles) using only the app's
+       existing color variables and gradient, nothing new added to the palette. */
+    .cord-view-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .cord-view-back-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); padding: 4px; display: flex; align-items: center; }
+    .cord-view-title { font-family: var(--font-heading); font-size: 32px; color: var(--text-main); margin: 0; }
+
+    /* Colored initial-circle avatar — stands in for a profile photo everywhere in Cords. */
+    .cord-avatar { border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-family: var(--font-heading); letter-spacing: 0.5px; flex-shrink: 0; }
+
+    .cord-section-label { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin: 20px 0 10px; }
+
+    /* "New Cord" compose card */
+    .cord-compose-box { background: var(--bg-color); border-radius: 16px; padding: 14px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .cord-search-row { display: flex; gap: 8px; align-items: center; }
+    .cord-search-input { flex: 1; min-width: 0; border: 1px solid var(--border-color); border-radius: 9999px; padding: 10px 16px; font-size: 14px; background: var(--card-bg); color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; }
+    .cord-add-circle-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #fff; font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+    .cord-chip-row { margin-top: 10px; }
+    .cord-username-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 999px; padding: 3px 10px 3px 3px; font-size: 12px; margin: 2px 4px 2px 0; color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; }
+    .cord-username-chip button { background: none; border: none; cursor: pointer; font-weight: 700; color: var(--text-muted); padding: 0; font-size: 13px; }
+
+    /* Requests + cord list rows */
+    .cord-pending-item { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-radius: 12px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .cord-pending-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .cord-pending-name { font-weight: 700; font-size: 14px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cord-pending-sub { font-size: 12px; color: var(--text-muted); }
+    .cord-pill-btn { border: none; border-radius: 9999px; padding: 7px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; white-space: nowrap; }
+    .cord-pill-btn-accept { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #fff; }
+    .cord-pill-btn-decline { background: var(--border-color); color: var(--text-main); }
+
+    .cord-list-item { display: flex; align-items: center; gap: 12px; padding: 10px 4px; cursor: pointer; border-radius: 12px; transition: background 0.15s ease; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .cord-list-item:hover { background: var(--bg-color); }
+    .cord-list-item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .cord-list-item-name { font-weight: 700; color: var(--text-main); font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cord-list-item-sub { font-size: 12px; color: var(--text-muted); }
+    .cord-list-item-date { font-size: 11px; color: var(--text-muted); white-space: nowrap; margin-left: 8px; flex-shrink: 0; }
+
+    /* Thread (open cord) */
+    .cord-thread-header { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); font-family: 'Plus Jakarta Sans', sans-serif; }
+    .cord-thread-back { background: none; border: none; cursor: pointer; font-size: 20px; color: var(--text-main); padding: 4px; display: flex; align-items: center; }
+    .cord-thread-title { font-weight: 700; font-size: 15px; color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; }
+    .cord-messages-scroll { display: flex; flex-direction: column; max-height: 360px; overflow-y: auto; margin-bottom: 12px; padding: 4px 2px; }
+    .cord-msg-row { display: flex; align-items: flex-end; gap: 6px; margin: 2px 0; justify-content: flex-start; }
+    .cord-msg-row.me { justify-content: flex-end; }
+    .cord-msg-avatar-spacer { width: 26px; flex-shrink: 0; }
+    .cord-thread-bubble { border-radius: 18px; padding: 9px 14px; max-width: 72%; font-size: 14px; line-height: 1.35; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .cord-thread-bubble.me { border-bottom-right-radius: 5px; }
+    .cord-thread-bubble.other { border-bottom-left-radius: 5px; }
+    .cord-thread-bubble-meta { font-size: 10px; font-weight: 700; opacity: 0.7; margin-bottom: 2px; }
+    .cord-msg-time { font-size: 10px; color: var(--text-muted); text-align: center; margin: 4px 0 8px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .cord-msg-time.me { text-align: right; padding-right: 32px; }
+    .cord-msg-time.other { text-align: left; padding-left: 32px; }
+    .cord-thread-sendbar { display: flex; align-items: center; gap: 8px; }
+    .cord-thread-input-pill { flex: 1; min-width: 0; border: 1px solid var(--border-color); border-radius: 9999px; padding: 10px 16px; font-size: 14px; background: var(--card-bg); color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; }
+    .cord-send-circle-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+    .nav-btn.active { background: var(--primary-color); color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+
+    /* Favicon styling inside nav buttons */
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      }
+    .nav-favicon {
+      width: 50px;
+      height: 20px;
+      object-fit: contain;
+      display: block;
+      transition: filter 0.2s ease;
+      }
+    .nav-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      line-height: 1;
+      }
+    /* Invert image color to white if the tab is active and highlighted */
+    .nav-btn.active .nav-favicon {
+      filter: brightness(0) invert(1);
+      }
+    
+    .tab-content { display: none; background: var(--card-bg); padding: var(--spacing-lg); border-radius: var(--border-radius); box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid var(--border-color); }
+    .tab-content.active { display: block; }
+    /* On phones, let the white content card bleed all the way to the screen
+       edges instead of floating with a strip of the purple page background
+       showing down each side — that strip is pure overhead on a screen
+       that's already narrow, and every full-width tab (Bible, Study, Cords,
+       Records, Settings, the admin editors — they all share .tab-content)
+       gets it back at once. Achieved by canceling out .container's own
+       left/right padding with an equal negative margin (so the card's edges
+       land exactly on the container's, i.e. the screen's, edges) and moving
+       that same amount of padding onto the card itself, so its own content
+       keeps the same inset it always had — only the purple margin outside
+       the card disappears. The header row and everything else still using
+       .container's padding directly (the "Logged in as" bar, its icons) are
+       untouched, so this only affects the content card, not the chrome
+       around it. Desktop/tablet keep the original floating, margined card —
+       there the visible page background is centering a readable column, not
+       wasting width, so it stays. */
+    @media (max-width: 600px) {
+      .tab-content {
+        margin-left: calc(-1 * var(--spacing-md));
+        margin-right: calc(-1 * var(--spacing-md));
+        padding-left: var(--spacing-md);
+        padding-right: var(--spacing-md);
+        border-left: none;
+        border-right: none;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+
+    /* The Bible reading tab is a deliberate exception to the "bleed to the
+       screen edges on phones" treatment above — generous side margins are
+       exactly what makes it read like a printed page rather than a form, so
+       it keeps (and on phones, actively restores) real breathing room on
+       both sides regardless of screen width. #bible-tab's id selector
+       already outranks .tab-content's class selector, so this wins without
+       needing !important anywhere. */
+    #bible-tab { padding-left: 64px; padding-right: 64px; }
+    @media (max-width: 900px) {
+      #bible-tab { padding-left: 36px; padding-right: 36px; }
+    }
+    @media (max-width: 600px) {
+      #bible-tab { padding-left: 26px; padding-right: 26px; }
+    }
+
+    /* Daily Reading gets the same treatment, but scoped to just that view
+       (not the Calendar view, which shares #plan-tab and wants its own full
+       width and visible day boxes) via a class toggled in
+       renderActivePlanView(). Removes #plan-tab's own outline (border/shadow
+       — the same .tab-content styling every tab shares) and the outline
+       around the .calendar-cell wrapping the day's text (same class the
+       Calendar grid's day boxes use); both keep their normal background
+       color and stay present for layout/spacing — only the visible outline
+       disappears, so Daily Reading reads like a printed page rather than
+       sitting in a bordered box. Selector specificity here (an id plus two
+       classes for .calendar-cell) already outranks
+       .calendar-cell.completed/.today, so this wins regardless of which of
+       those also apply to today's cell. */
+    #plan-tab.daily-reading-view {
+      border: none;
+      box-shadow: none;
+    }
+    #plan-tab.daily-reading-view #schedule-content { padding-left: 64px; padding-right: 64px; }
+    @media (max-width: 900px) {
+      #plan-tab.daily-reading-view #schedule-content { padding-left: 36px; padding-right: 36px; }
+    }
+    @media (max-width: 600px) {
+      #plan-tab.daily-reading-view #schedule-content { padding-left: 26px; padding-right: 26px; }
+    }
+    #plan-tab.daily-reading-view .calendar-cell {
+      border: none;
+      box-shadow: none;
+    }
+
+    /* Daily Verse */
+    .daily-verse { text-align: center; font-style: italic; background: rgba(99, 102, 241, 0.08); padding: var(--spacing-md); border-radius: var(--border-radius); margin-bottom: 0; color: var(--text-main); border: 1px solid rgba(99, 102, 241, 0.2); }
+
+    /* Bible View & Three-Column Layout with Grid Alignment */
+/* Bible View & Three-Column Layout with Grid Alignment */
+    .controls-row { display: flex; gap: 10px; margin-bottom: var(--spacing-md); flex-wrap: nowrap; font-family: 'Plus Jakarta Sans', sans-serif; align-items: center; }
+    select, input[type="text"] { padding: 10px; border-radius: var(--border-radius); border: 1px solid var(--border-color); font-size: 16px; background-color: var(--card-bg); color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; }
+    
+    #translation-select { 
+      flex: 0 0 auto; 
+      border: none; 
+      appearance: none; 
+      outline: none; 
+      cursor: pointer;
+      font-weight: 700; 
+      padding-left: 0;
+      padding-right: 18px; /* Make room for the custom arrows */
+      
+      /* 1. Gradient for the text | 2. SVG up/down arrows containing the same gradient */
+      background-image: 
+        linear-gradient(135deg, #6366f1 0%, #a855f7 100%), 
+        url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='url(%23grad)' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%236366f1' /%3E%3Cstop offset='100%25' stop-color='%23a855f7' /%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolyline points='7 15 12 20 17 15'%3E%3C/polyline%3E%3Cpolyline points='7 9 12 4 17 9'%3E%3C/polyline%3E%3C/svg%3E");
+      
+      /* Position text gradient normally, place the SVG arrows on the right */
+      background-position: left center, right center;
+      background-repeat: no-repeat, no-repeat;
+      background-size: 100% 100%, 14px 14px;
+      
+      /* Clip the first background to text, and the second to the padding box */
+      -webkit-background-clip: text, padding-box;
+      background-clip: text, padding-box;
+      
+      color: transparent; 
+      -webkit-text-fill-color: transparent; 
+    }
+
+    /* Style the dropdown options */
+    #translation-select option {
+      /* Native OS <option> elements cannot securely render text-clipping gradients. 
+         We use a solid matching theme color to simulate the gradient experience safely across all browsers. */
+      color: #7c3aed;
+      background-color: var(--card-bg);
+      font-weight: 600;
+    }
+
+    /* Same borderless gradient-text treatment as the Bible View translation selector */
+    #plan-translation-select {
+      flex: 0 0 auto;
+      border: none;
+      appearance: none;
+      outline: none;
+      cursor: pointer;
+      font-weight: 700;
+      padding-left: 0;
+      padding-right: 18px;
+      background-color: transparent;
+
+      background-image: 
+        linear-gradient(135deg, #6366f1 0%, #a855f7 100%), 
+        url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='url(%23grad)' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%236366f1' /%3E%3Cstop offset='100%25' stop-color='%23a855f7' /%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolyline points='7 15 12 20 17 15'%3E%3C/polyline%3E%3Cpolyline points='7 9 12 4 17 9'%3E%3C/polyline%3E%3C/svg%3E");
+
+      background-position: left center, right center;
+      background-repeat: no-repeat, no-repeat;
+      background-size: 100% 100%, 14px 14px;
+
+      -webkit-background-clip: text, padding-box;
+      background-clip: text, padding-box;
+
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+
+    #plan-translation-select option {
+      color: #7c3aed;
+      background-color: var(--card-bg);
+      font-weight: 600;
+    }
+    
+    #bible-search-box { flex: 1 1 0; min-width: 0; }    
+    .margin-title { font-size: 14px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; font-family: var(--font-heading); display: flex; align-items: center; gap: 16px; }
+
+    /* CSS Grid Container */
+    .bible-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr 44px; gap: 16px; align-items: stretch; transition: grid-template-columns 0.3s ease; }
+    
+    .bible-grid.collapse-notes { grid-template-columns: 1.2fr 0fr 1fr 44px; }
+    .bible-grid.collapse-notes .margin-note-card:not(.church-resource-column-cell) { display: none !important; }
+
+    .bible-grid.collapse-resources { grid-template-columns: 1.2fr 1fr 0fr 44px; }
+    .bible-grid.collapse-resources .church-resource-column-cell { display: none !important; }
+
+    .bible-grid.collapse-notes.collapse-resources { grid-template-columns: 1.2fr 0fr 0fr 44px; }
+    /* When both side columns are collapsed down to just the verse text, match
+       Daily Reading's line spacing (1.7) for the same comfortable reading
+       feel — the denser 3-column layout (verse text alongside Margin Notes
+       and Church Resources) keeps its own tighter 1.65 below, unaffected,
+       since this only applies once both are collapsed. Verse numbers stay
+       exactly where they are (.verse-ref is untouched) — only the space
+       between lines of verse text changes. */
+    /* When collapsed to just verse text, also close most of the per-row
+       padding below — each verse is still its own .verse-row (needed for its
+       margin-note alignment, share button, and click-to-highlight behavior
+       even when those columns are visually hidden), so consecutive verses
+       otherwise pick up noticeably more gap between them (this row's bottom
+       padding plus the next row's top padding) than Daily Reading's
+       continuous run of text, which has no such per-verse break at all. */
+    .bible-grid.collapse-notes.collapse-resources .verse-row { line-height: 1.7; padding: 1px 0; }
+
+    .verse-row-wrap { display: contents; }
+    .verse-row { grid-column: 1; padding: 7px 0; border-bottom: none; line-height: 1.65; letter-spacing: -0.01em; display: flex; align-items: flex-start; font-size: 18px; }
+    .verse-share-cell { grid-column: 4; display: flex; align-items: center; justify-content: center; }
+    .share-btn { background: transparent; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.2s ease, transform 0.15s ease; border-radius: 6px; }
+    .share-btn:hover { color: var(--primary-color); transform: scale(1.1); }
+    .share-highlight { animation: shareFlash 2s ease; }
+    @keyframes shareFlash { 0% { background-color: rgba(99, 102, 241, 0.35); } 100% { background-color: transparent; } }
+    .verse-ref { font-weight: 600; color: var(--text-main); margin-right: 7px; cursor: pointer; white-space: nowrap; font-family: var(--font-family); font-size: 12.5px; vertical-align: super; letter-spacing: -0.01em; }
+    .verse-ref:hover { color: var(--primary-color); text-decoration: underline; }
+
+    /* Margin Note Cards */
+    .margin-note-card { grid-column: 2; background: transparent; border: none; border-radius: 0; padding: 4px 0; margin-bottom: 0; font-size: 14px; display: flex; flex-direction: column; justify-content: center; border-bottom: 1px dashed var(--border-color); transition: all 0.3s ease; }
+    .margin-note-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .margin-note-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .color-select { font-size: 11px; padding: 2px 4px; height: auto; border: 1px solid var(--border-color); border-radius: var(--border-radius); background-color: var(--card-bg); color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; cursor: pointer; }
+    .margin-note-card textarea { width: 100%; min-height: 30px; height: auto; padding: 4px 8px; border: none; border-radius: 0; resize: none; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; margin-bottom: 0; background-color: var(--card-bg); color: var(--text-main); }
+    .margin-note-card textarea:focus { background-color: var(--card-bg); border: none; outline: none; box-shadow: none; }
+
+    /* Church Resources Section */
+    .church-resource-column-cell { grid-column: 3; transition: all 0.3s ease; }
+    .church-resource-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 8px; padding-bottom: 30px; margin-bottom: 8px; font-size: 13px; font-family: 'Plus Jakarta Sans', sans-serif; display: flex; flex-direction: column; gap: 6px; position: relative; }
+    /* A card whose link is (or contains) a YouTube video: its own thumbnail becomes
+       the card's background — via a background-image, not a separate overlay element,
+       so the existing children simply paint on top with no z-index juggling needed —
+       darkened toward the bottom so the title stays legible over any thumbnail. */
+    .church-resource-card.has-video-thumb { background-size: cover; background-position: center; color: #fff; min-height: 110px; justify-content: flex-end; border-color: transparent; }
+    .church-resource-card.has-video-thumb .church-resource-video-title { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.85); }
+    .church-resource-card.has-video-thumb .share-btn { background: rgba(0,0,0,0.5); color: #fff; }
+    .church-resource-card.has-video-thumb .share-btn:hover { background: rgba(0,0,0,0.7); color: #fff; }
+    .church-resource-video-playbtn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; pointer-events: none; }
+    .church-resource-video-trigger { all: unset; cursor: pointer; display: block; width: 100%; }
+    /* A video link whose thumbnail has been turned off (or has none) still needs to
+       read as clickable — same link color as a plain resource, plus a small inline
+       play glyph instead of the big centered one that only makes sense over an image. */
+    .church-resource-video-title { color: var(--primary-color); }
+    .church-resource-video-inline-play { display: inline-flex; vertical-align: -2px; margin-right: 4px; }
+    .church-resource-input-container { display: flex; gap: 6px; margin-bottom: 6px; }
+    .church-resource-input-container input { flex: 1; padding: 6px 10px; font-size: 13px; }
+    .church-resource-input-container button { padding: 6px 12px; font-size: 13px; width: auto; }
+
+    .tag { display: inline-block; background: var(--accent-yellow); color: #ffffff; font-weight: bold; font-size: 12px; padding: 4px 8px; border-radius: 12px; margin-top: 8px; margin-right: 4px; }
+    .type-tag { display: inline-block; background: var(--accent-purple); color: #ffffff; font-weight: bold; font-size: 12px; padding: 4px 8px; border-radius: 12px; margin-top: 8px; margin-right: 4px; }
+
+    /* Reading Plan Styles */
+    .plan-header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: nowrap; gap: 10px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    /* The reading-plan name can be longer than will ever fit next to the
+       translation selector and the Start/Restart button on one row, so let it
+       truncate with an ellipsis rather than clipping mid-character. */
+    #schedule-select { text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+    /* On narrow screens, shrink the translation selector and the Start/Restart
+       button further so the reading-plan name still gets as much of the row
+       as possible while all three stay on one line. */
+    @media (max-width: 600px) {
+      .plan-header-bar { gap: 6px; }
+      #plan-translation-select { font-size: 14px; padding-right: 14px; background-size: 100% 100%, 11px 11px; }
+      #schedule-select { font-size: 13px !important; }
+      #plan-start-restart-btn { padding: 6px 8px !important; font-size: 11px !important; }
+    }
+    .plan-sub-tabs { display: flex; margin-bottom: 15px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    /* Margin-based spacing (rather than flex `gap`) so the collapsible tts-wrap
+       below can zero out its OWN margin to fully close the space around it —
+       flex `gap` would keep reserving space on both sides of a zero-width child. */
+    .plan-sub-tabs > * { margin-right: 8px; }
+    .plan-sub-tabs > *:last-child { margin-right: 0; }
+    #plan-sub-tabs-row { justify-content: center; }
+    .plan-sub-btn { position: relative; background: var(--border-color); border: none; padding: 8px 14px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-main); border-radius: var(--border-radius); font-family: 'Plus Jakarta Sans', sans-serif; transition: background 0.2s; }
+    .plan-sub-btn.active { background: var(--primary-color); color: white; }
+    /* Wraps the rewind/play-pause/forward "listen aloud" controls between the
+       Daily Reading and Calendar view buttons. On load this sits collapsed to
+       zero width (and zero margin) so those two view buttons start right next
+       to each other; removing .tts-wrap-collapsed (done ~2s after load, giving
+       the Google voice a little extra time to warm up first — see
+       warmUpDailyReadingTtsVoice) smoothly opens it back up to reveal the
+       play/pause button in between them. */
+    #daily-reading-tts-wrap { display: flex; align-items: center; gap: 8px; max-width: 260px; opacity: 1; overflow: hidden; transition: max-width 1.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 1.8s cubic-bezier(0.4, 0, 0.2, 1), margin-right 1.8s cubic-bezier(0.4, 0, 0.2, 1); }
+    #daily-reading-tts-wrap.tts-wrap-collapsed { max-width: 0; opacity: 0; margin-right: 0; pointer-events: none; }
+    /* "Listen to today's reading" control sits between the Daily Reading View and
+       Calendar View buttons, using the same pill styling; its "active" (speaking)
+       state borrows the app's own indigo-to-purple gradient rather than the flat
+       --primary-color used for the two view-switch buttons, so it reads as "playing"
+       rather than "the currently selected view". */
+    #daily-reading-tts-btn.active { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #fff; }
+    .daily-reading-continue-prompt { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: rgba(99,102,241,0.10); border: 1px solid rgba(99,102,241,0.3); color: var(--text-main); padding: 12px 16px; border-radius: var(--border-radius); margin-bottom: 15px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13.5px; }
+    .daily-reading-continue-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    /* Study tab sub-option row: no gray pill behind the buttons, plus room for a leading icon */
+    .study-sub-btn { background: transparent; display: inline-flex; align-items: center; gap: 7px; }
+    .study-subtab-icon { width: 17px; height: 17px; flex-shrink: 0; color: #6366f1; transition: color 0.2s ease; }
+    .study-subtab-icon-shelf { width: 22px; height: 11px; }
+    .study-sub-btn.active .study-subtab-icon { color: #ffffff; }
+    .subtab-badge { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #ffffff; font-size: 11px; font-weight: 700; display: none; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 2px 6px rgba(0,0,0,0.25); line-height: 1; }
+    .study-sub-content { display: none; }
+    .study-sub-content.active { display: block; }
+
+    /* Foundations — a Library-style browsable class list (Study tab sub-option).
+       Content (title, presenter, category, thumbnail, "New" flag, body) is
+       fully admin-editable from Manage Content; the category pills below are
+       derived automatically from whatever categories are actually in use, so
+       there's nothing extra for an admin to keep in sync by hand. */
+    .foundations-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+    .foundations-search-btn { background: none; border: none; cursor: pointer; color: var(--text-main); padding: 6px; display: flex; align-items: center; flex-shrink: 0; }
+    .foundations-search-row { margin: 10px 0 4px; }
+    .foundations-pills-row { display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 4px 2px 8px; margin-top: 10px; }
+    .foundations-pill { flex-shrink: 0; white-space: nowrap; background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 16px; border-radius: 9999px; font-size: 13px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+    .foundations-pill.active { background: var(--primary-color); border-color: var(--primary-color); color: #ffffff; }
+    /* Netflix-style browse: horizontal "shelves" of wide cards grouped by
+       category (used when no search/category filter is active); a search or
+       category filter instead shows one flat wrapping grid of results using
+       the same card. */
+    .foundations-rows { display: flex; flex-direction: column; gap: 26px; }
+    .foundations-row-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 10px 4px 12px; }
+    .foundations-row-title { font-family: var(--font-heading); font-size: 20px; letter-spacing: 0.3px; color: var(--text-main); }
+    /* Back/forward controls for a shelf — scroll its .foundations-hscroll
+       sibling by roughly one screenful in each direction (see
+       scrollFoundationsRow). Deliberately no background block behind the
+       pair (transparent, sitting right on the page) — just the two round
+       gradient buttons themselves. */
+    .foundations-row-nav { display: flex; gap: 8px; flex-shrink: 0; }
+    .foundations-row-nav-btn { width: 32px; height: 32px; border-radius: 50%; border: none; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+    .foundations-row-nav-btn svg { display: block; }
+    .foundations-hscroll { display: flex; gap: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 16px 12px 14px; scroll-snap-type: x proximity; }
+    .foundations-grid { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 6px 4px; }
+    .foundations-nx-card { position: relative; flex: 0 0 336px; width: 336px; scroll-snap-align: start; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: transform 0.18s ease; }
+    .foundations-grid .foundations-nx-card { flex: 0 0 336px; }
+    .foundations-nx-card:hover { transform: translateY(-4px) scale(1.035); z-index: 2; }
+    .foundations-nx-thumb-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: var(--bg-color); box-shadow: 0 3px 10px rgba(0,0,0,0.18); }
+    .foundations-nx-thumb, .foundations-nx-thumb-fallback { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .foundations-nx-thumb-fallback { display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.92); font-weight: 800; font-size: 48px; font-family: var(--font-heading); }
+    /* Silent, looping hero-video preview for a browse card — layered over the
+       static thumbnail/fallback underneath (kept there for classes with no
+       playable hero video, and as a fallback while this loads). The wrap is
+       already exactly 16:9 like the video, so a plain 100%/100% iframe fills
+       it edge-to-edge with no cropping math needed (unlike the class detail
+       hero, whose box isn't a fixed aspect ratio). */
+    .foundations-nx-video-bg { position: absolute; inset: 0; }
+    .foundations-nx-video-bg iframe { width: 100%; height: 100%; border: none; display: block; pointer-events: none; }
+    .foundations-nx-new-badge { position: absolute; top: 8px; left: 8px; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 0.3px; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+    .foundations-nx-share-btn { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(0,0,0,0.5); color: #fff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.15s ease; }
+    .foundations-nx-card:hover .foundations-nx-share-btn { opacity: 1; }
+    .foundations-nx-info { padding: 10px 2px 0; }
+    .foundations-nx-title { font-weight: 700; font-size: 17px; color: var(--text-main); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .foundations-nx-meta { font-size: 13.5px; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .foundations-filters-row { display: flex; justify-content: flex-end; align-items: center; padding: 2px 2px 10px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .foundations-clear-filters { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 4px; visibility: hidden; }
+    .foundations-clear-filters.visible { visibility: visible; }
+    .foundations-list { display: flex; flex-direction: column; gap: 4px; }
+    .foundations-card { display: flex; align-items: center; gap: 14px; padding: 10px 6px; border-radius: 12px; cursor: pointer; transition: background 0.15s; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .foundations-card:hover { background: var(--bg-color); }
+    .foundations-card-thumb-wrap { position: relative; flex-shrink: 0; }
+    .foundations-card-thumb { width: 68px; height: 68px; border-radius: 10px; object-fit: cover; display: block; background: var(--bg-color); }
+    .foundations-card-thumb-fallback { width: 68px; height: 68px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 22px; font-family: var(--font-heading); }
+    .foundations-card-new-badge { position: absolute; left: -4px; bottom: -4px; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #fff; font-size: 9.5px; font-weight: 800; letter-spacing: 0.3px; text-transform: uppercase; padding: 2px 6px; border-radius: 999px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); border: 2px solid var(--card-bg); }
+    .foundations-card-info { min-width: 0; flex: 1; }
+    .foundations-card-title { font-weight: 700; font-size: 14.5px; color: var(--text-main); line-height: 1.3; }
+    .foundations-card-presenter { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+    .foundations-card-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; }
+    .foundations-empty { color: var(--text-muted); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; padding: 24px 4px; text-align: center; }
+    .foundations-detail-panel { margin-top: 16px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    /* MasterClass-style hero: a cinematic backdrop with the class title,
+       presenter, and a one-tap "Play" straight into the first lesson's
+       video, replacing the old plain thumbnail + heading layout. */
+    .foundations-hero { position: relative; border-radius: 16px; overflow: hidden; margin-bottom: 24px; min-height: 260px; background: #15131d; }
+    .foundations-hero-bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+    .foundations-hero-bg.no-image { filter: saturate(1.3); }
+    /* Silent, looping preview of the hero video, layered over .foundations-hero-bg
+       (which stays underneath as a fallback while this loads, or if the embed
+       fails). The iframe is deliberately oversized and centered — see
+       sizeFoundationsHeroVideoBg — so it crops to fill the box edge-to-edge
+       ("cover") instead of leaving letterboxing when the box's own aspect
+       ratio doesn't match the video's 16:9. */
+    .foundations-hero-video-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+    .foundations-hero-video-bg iframe { position: absolute; top: 50%; left: 50%; border: none; }
+    .foundations-hero-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,14,0.15) 0%, rgba(10,10,14,0.55) 55%, rgba(10,10,14,0.92) 100%); }
+    .foundations-hero-topbar { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 14px; }
+    .foundations-hero-round-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.16); border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(4px); }
+    .foundations-hero-content { position: relative; padding: 40px 20px 24px; color: #fff; }
+    .foundations-hero-category { display: inline-block; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; padding: 4px 11px; border-radius: 999px; background: rgba(255,255,255,0.18); margin-bottom: 12px; }
+    .foundations-hero-title { font-family: var(--font-heading); font-size: 32px; line-height: 1.08; margin: 0 0 12px; text-shadow: 0 2px 12px rgba(0,0,0,0.5); }
+    .foundations-hero-presenter { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9); }
+    .foundations-hero-presenter img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.65); flex-shrink: 0; }
+    .foundations-hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .foundations-hero-play-btn { display: flex; align-items: center; gap: 9px; background: #fff; color: #15131d; font-weight: 800; font-size: 14px; padding: 12px 22px; border-radius: 999px; border: none; cursor: pointer; }
+    .foundations-lessons-heading { font-family: var(--font-heading); font-size: 20px; letter-spacing: 0.3px; color: var(--text-main); margin: 0 0 12px 2px; }
+
+    /* TW Bible Course — the Module list (browse) view; Module detail pages
+       reuse the Core-D hero/lessons classes above directly. */
+    .tw-module-list { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+    .tw-module-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 18px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--card-bg); cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: transform 0.15s; }
+    .tw-module-card:hover { transform: translateY(-2px); }
+    .tw-module-card.locked { opacity: 0.55; cursor: not-allowed; }
+    .tw-module-card.locked:hover { transform: none; }
+    .tw-module-index { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 16px; flex-shrink: 0; background: var(--bg-color); color: var(--text-muted); }
+    .tw-module-card.complete .tw-module-index { background: var(--accent-teal); color: #fff; }
+    .tw-module-title { font-weight: 700; font-size: 15px; color: var(--text-main); }
+    .tw-module-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .tw-module-lock-icon { color: var(--text-muted); flex-shrink: 0; display: flex; }
+
+    /* TW Bible Course inline Knowledge Check — for a video-less lesson, shown
+       directly in its expanded body since there's no video player to overlay
+       it on (video lessons instead use the full-screen .fsv-kc-* overlay). */
+    .tw-inline-kc { margin-top: 10px; padding: 14px; border-radius: var(--border-radius); border: 1px dashed var(--border-color); background: var(--bg-color); }
+    .tw-inline-kc-eyebrow { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--primary-color); margin-bottom: 8px; }
+    .tw-inline-kc-question { font-weight: 700; font-size: 14.5px; color: var(--text-main); margin-bottom: 10px; }
+    .tw-inline-kc-options { display: flex; flex-direction: column; gap: 8px; }
+    .tw-inline-kc-option { text-align: left; background: var(--card-bg); border: 1.5px solid var(--border-color); color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13.5px; font-weight: 600; padding: 10px 14px; border-radius: 10px; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+    .tw-inline-kc-option:hover { background: var(--bg-color); border-color: var(--primary-color); }
+    .tw-inline-kc-option.incorrect { background: rgba(239,68,68,0.12); border-color: #ef4444; color: #b91c1c; }
+    .tw-inline-kc-option.correct { background: rgba(34,197,94,0.14); border-color: #22c55e; color: #15803d; }
+    .tw-inline-kc-option.disabled { pointer-events: none; }
+    .tw-inline-kc-next-btn { display: inline-block; margin-top: 8px; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #fff; border: none; padding: 8px 16px; border-radius: 999px; font-weight: 700; font-size: 12.5px; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .tw-inline-kc-feedback { margin-top: 10px; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
+    .tw-inline-kc-feedback-title { display: block; font-weight: 700; color: #b91c1c; margin-bottom: 3px; }
+
+    /* TW Bible Course completion celebration — matches the app's existing
+       modal look (see .login-box) rather than inventing a new style. */
+    #tw-course-completion-modal { display: none; position: fixed; inset: 0; background: rgba(15,15,20,0.55); z-index: 3500; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+    #tw-course-completion-modal.open { display: flex; }
+    .tw-completion-box { position: relative; background: var(--card-bg); padding: var(--spacing-lg); border-radius: var(--border-radius); box-shadow: 0 20px 50px rgba(0,0,0,0.25); width: 100%; max-width: 420px; border: 1px solid var(--border-color); text-align: center; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .tw-completion-close-btn { position: absolute; top: 10px; right: 12px; background: none; border: none; font-size: 24px; line-height: 1; color: var(--text-muted); cursor: pointer; padding: 4px 8px; }
+    .tw-completion-close-btn:hover { color: var(--text-main); }
+    .tw-completion-icon { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+    .tw-completion-title { font-family: var(--font-heading); font-size: 24px; color: var(--text-main); margin: 0 0 10px; }
+    .tw-completion-message { color: var(--text-main); font-size: 14.5px; line-height: 1.55; margin-bottom: 22px; }
+    .tw-completion-cta { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #fff; font-weight: 700; font-size: 14px; padding: 12px 24px; border-radius: 999px; text-decoration: none; }
+    .foundations-detail-body { font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text-main); font-size: 15px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+    /* Sub-headings within pasted/typed content — "# " through "#### " lines,
+       see applyFoundationsMarkup — rendered in the app's heading font for a
+       clear visual break from body text, biggest at level 1. */
+    .foundations-content-heading { display: block; font-family: var(--font-heading); font-weight: 400; color: var(--text-main); letter-spacing: 0.3px; white-space: normal; }
+    .foundations-content-heading-1 { font-size: 26px; margin: 4px 0 6px; }
+    .foundations-content-heading-2 { font-size: 21px; margin: 4px 0 6px; }
+    .foundations-content-heading-3 { font-size: 18px; margin: 4px 0 4px; }
+    .foundations-content-heading-4 { font-size: 15px; margin: 4px 0 4px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+    .foundations-sessions-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+    .foundations-session-item { border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; background: var(--card-bg); }
+    .foundations-session-header { width: 100%; display: flex; align-items: center; gap: 4px; padding: 6px 8px 6px 14px; }
+    .foundations-session-toggle { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: none; border: none; cursor: pointer; padding: 6px 0; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; color: var(--text-main); text-align: left; }
+    .foundations-session-toggle-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+    .foundations-lesson-index { font-family: var(--font-heading); font-size: 18px; color: var(--text-muted); width: 26px; flex-shrink: 0; text-align: center; }
+    .foundations-session-item.open .foundations-lesson-index { color: var(--primary-color); }
+    .foundations-session-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .foundations-session-media-chips { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .foundations-session-media-chip { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: rgba(99, 102, 241, 0.14); color: var(--primary-color); flex-shrink: 0; }
+    .foundations-media-list { display: flex; flex-direction: column; gap: 8px; }
+    .foundations-media-item { border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: var(--bg-color); }
+    .foundations-media-item-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: none; border: none; cursor: pointer; padding: 9px 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 13px; color: var(--text-main); text-align: left; }
+    .foundations-media-item-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .foundations-media-item-icon { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(99, 102, 241, 0.14); color: var(--primary-color); flex-shrink: 0; }
+    .foundations-media-item-chevron { flex-shrink: 0; transition: transform 0.15s; color: var(--text-muted); }
+    .foundations-media-item.open .foundations-media-item-chevron { transform: rotate(180deg); color: var(--primary-color); }
+    .foundations-media-item.open .foundations-media-item-toggle { border-bottom: 1px solid var(--border-color); }
+    .foundations-media-item-body { padding: 10px 12px 12px; }
+    /* Full-screen video player — the single, shared way every video in the
+       app plays. Covers the whole viewport (including the nav bar) above
+       everything else; hidden until openFsvPlayer() adds .open. */
+    .fsv-player { position: fixed; inset: 0; width: 100%; height: 100%; background: #000; z-index: 5000; display: none; transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease, border-radius 0.2s ease; }
+    .fsv-player.open { display: block; }
+    /* Shrunk into the corner (see toggleFsvMiniMode) — the box itself gets
+       smaller rather than being visually scaled, so everything outside it
+       (nav-tabs, tab content) is a normal, clickable part of the page again;
+       the video keeps playing the whole time since this element is never
+       destroyed or moved out of the DOM, just resized. */
+    .fsv-player.mini { top: 16px; left: 16px; right: auto; bottom: auto; width: 168px; height: 94px; border-radius: 10px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
+    .fsv-player.mini .fsv-title, .fsv-player.mini .fsv-bottom-bar, .fsv-player.mini .fsv-playlist-toggle, .fsv-player.mini .fsv-playlist-panel { display: none; }
+    .fsv-player.mini .fsv-close-btn, .fsv-player.mini .fsv-expand-btn { width: 24px; height: 24px; top: 4px; }
+    .fsv-player.mini .fsv-close-btn { right: 4px; }
+    .fsv-player.mini .fsv-expand-btn { left: 4px; }
+    .fsv-tap-area { position: absolute; inset: 0; }
+    .fsv-iframe { width: 100%; height: 100%; border: none; display: block; background: #000; }
+    /* The whole control chrome fades in/out together on a tap of the video
+       (see toggleFsvControls) — every control inside stops propagation so
+       pressing one doesn't also toggle this. Always shown while mini (see
+       applyFsvMiniMode), since there's no room left to tap-to-reveal. */
+    .fsv-controls { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity 0.15s ease; z-index: 16; }
+    /* One-tap fallback for when the browser blocks autoplay (mainly unmuted
+       autoplay in some browsers/contexts) instead of leaving YouTube's own
+       blocked-thumbnail state showing underneath our controls — see the
+       autoplay-check timer in fsvLoadCurrentVideo. */
+    .fsv-autoplay-fallback { position: absolute; inset: 0; z-index: 15; display: none; align-items: center; justify-content: center; background: #000; cursor: pointer; }
+    .fsv-autoplay-fallback.show { display: flex; }
+    .fsv-autoplay-fallback-text { font-family: var(--font-heading); font-size: 30px; letter-spacing: 1.5px; color: #fff; text-transform: uppercase; text-align: center; padding: 0 24px; }
+    .fsv-controls.visible { opacity: 1; pointer-events: none; }
+    .fsv-controls.visible .fsv-close-btn, .fsv-controls.visible .fsv-expand-btn, .fsv-controls.visible .fsv-title, .fsv-controls.visible .fsv-bottom-bar, .fsv-controls.visible .fsv-playlist-toggle { pointer-events: auto; }
+    .fsv-close-btn, .fsv-expand-btn { position: absolute; top: 14px; width: 38px; height: 38px; border-radius: 50%; background: rgba(0,0,0,0.55); border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .fsv-close-btn { right: 14px; }
+    .fsv-expand-btn { left: 14px; }
+    .fsv-title { position: absolute; top: 22px; left: 64px; right: 64px; color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 14px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fsv-bottom-bar { position: absolute; bottom: 58px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 14px; }
+    .fsv-btn { background: rgba(255,255,255,0.16); border: none; color: #fff; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+    .fsv-playlist-toggle { position: absolute; bottom: 18px; right: 16px; background: none; border: none; color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 12.5px; text-decoration: underline; cursor: pointer; text-shadow: 0 1px 3px rgba(0,0,0,0.8); padding: 4px; }
+    .fsv-playlist-panel { position: absolute; bottom: 0; left: 0; right: 0; max-height: 55%; overflow-y: auto; background: rgba(15,15,20,0.94); backdrop-filter: blur(6px); display: none; padding: 10px; box-sizing: border-box; z-index: 17; }
+    .fsv-playlist-panel.open { display: block; }
+    .fsv-playlist-item { padding: 12px 14px; border-radius: 8px; color: #fff; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; }
+    .fsv-playlist-item.active { background: rgba(99,102,241,0.4); }
+    .fsv-playlist-item:hover { background: rgba(255,255,255,0.1); }
+    /* Knowledge Check — a full-width overlay card that halts the video track
+       when it ends, instead of auto-advancing straight to the next clip.
+       Minimal, one-question-at-a-time layout with large tappable options,
+       matching the "Netflix-style learning dashboard" look rather than a
+       school-exam form. */
+    .fsv-kc-overlay { position: absolute; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: rgba(8,8,14,0.94); backdrop-filter: blur(10px); padding: 28px 22px; box-sizing: border-box; }
+    .fsv-kc-overlay.open { display: flex; }
+    .fsv-kc-card { width: 100%; max-width: 520px; }
+    .fsv-kc-eyebrow { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.6px; color: #c4b5fd; text-align: center; margin-bottom: 16px; }
+    .fsv-kc-question { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 21px; font-weight: 700; color: #fff; text-align: center; line-height: 1.4; margin-bottom: 26px; }
+    .fsv-kc-options { display: flex; flex-direction: column; gap: 11px; }
+    .fsv-kc-option { width: 100%; text-align: left; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.18); color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 600; padding: 15px 18px; border-radius: 12px; cursor: pointer; transition: background 0.15s, border-color 0.15s, transform 0.1s; }
+    .fsv-kc-option:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.32); }
+    .fsv-kc-option:active { transform: scale(0.98); }
+    .fsv-kc-option.disabled { pointer-events: none; opacity: 0.5; }
+    .fsv-kc-option.disabled.correct, .fsv-kc-option.disabled.incorrect { opacity: 1; }
+    .fsv-kc-option.correct { background: rgba(34,197,94,0.26); border-color: #22c55e; }
+    .fsv-kc-option.incorrect { background: rgba(239,68,68,0.24); border-color: #ef4444; }
+    .fsv-kc-feedback { display: none; margin-top: 22px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; line-height: 1.55; color: rgba(255,255,255,0.85); text-align: center; }
+    .fsv-kc-feedback-title { display: block; font-weight: 800; font-size: 16.5px; margin-bottom: 6px; }
+    .fsv-kc-feedback.correct .fsv-kc-feedback-title { color: #4ade80; }
+    .fsv-kc-feedback.incorrect .fsv-kc-feedback-title { color: #f87171; }
+    .fsv-kc-actions { display: none; margin-top: 24px; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .fsv-kc-actions button { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13.5px; padding: 12px 24px; border-radius: 999px; border: none; cursor: pointer; }
+    .fsv-kc-btn-primary { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #fff; }
+    .fsv-kc-btn-secondary { background: rgba(255,255,255,0.14); color: #fff; }
+    /* Plain (non-accordion) clickable video row — visually matches the
+       audio accordion item it sits next to, but opens the full-screen
+       player on click instead of expanding in place. */
+    .foundations-video-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: none; border: none; cursor: pointer; padding: 9px 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 13px; color: var(--text-main); text-align: left; }
+    .foundations-session-chevron { flex-shrink: 0; transition: transform 0.15s; color: var(--text-muted); }
+    .foundations-session-item.open .foundations-session-chevron { transform: rotate(180deg); color: var(--primary-color); }
+    .foundations-session-item.open .foundations-session-header { border-bottom: 1px solid var(--border-color); }
+    .foundations-session-body { padding: 12px 14px 14px; }
+    .foundations-detail-body a { color: var(--primary-color); }
+    .foundations-content-list { margin: 4px 0 10px 0; padding-left: 20px; }
+    .foundations-content-list li { margin-bottom: 4px; }
+    /* A table dropped into session content scrolls sideways within its own
+       strip rather than ever widening (and breaking) the page around it —
+       the norm for tables on a phone-width screen. */
+    .foundations-content-table-wrap { overflow-x: auto; margin: 4px 0 10px 0; -webkit-overflow-scrolling: touch; }
+    .foundations-content-table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+    .foundations-content-table th, .foundations-content-table td { border: 1px solid var(--border-color); padding: 6px 10px; text-align: left; }
+    .foundations-content-table th { background: var(--bg-color); font-weight: 700; color: var(--text-main); }
+    .foundations-content-table td { color: var(--text-main); }
+    .foundations-scripture-link { color: var(--primary-color); text-decoration: none; cursor: pointer; }
+    .foundations-scripture-link:hover { text-decoration: underline; }
+    .foundations-format-toolbar { display: flex; gap: 4px; margin-bottom: 6px; }
+    .foundations-format-btn { width: 30px; height: 30px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; }
+    .foundations-format-btn:hover { border-color: var(--primary-color); color: var(--primary-color); }
+    .foundations-suggestions-section { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border-color); }
+    .foundations-suggestions-heading { font-family: var(--font-heading); font-weight: 800; font-size: 16px; color: var(--text-main); margin-bottom: 10px; }
+    .foundations-suggestion-card { display: flex; align-items: center; gap: 14px; padding: 10px 6px; border-radius: 12px; cursor: pointer; transition: background 0.15s; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0 -6px; }
+    .foundations-suggestion-card:hover { background: var(--bg-color); }
+
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .calendar-cell { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 10px; min-height: 100px; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; transition: background 0.2s; overflow: hidden; }
+    .calendar-cell.completed { background: rgba(99, 102, 241, 0.08); border-color: rgba(99, 102, 241, 0.3); opacity: 1; }
+    .calendar-cell.today { border: 2px solid var(--primary-color); }
+
+    /* Daily reading completion controls */
+    .daily-complete-toggle { display:inline-flex; align-items:center; gap:8px; padding:11px 24px; border-radius:999px; font-weight:700; font-size:14px; cursor:pointer; border:2px solid var(--border-color); color:var(--text-main); background:var(--card-bg); transition:all 0.25s ease; user-select:none; }
+    .daily-complete-toggle:hover { border-color: var(--primary-color); }
+    .daily-complete-toggle.is-complete { background: linear-gradient(135deg, #16a34a, #22c55e); border-color: transparent; color: #fff; box-shadow: 0 6px 16px rgba(22,163,74,0.35); }
+    .daily-complete-toggle .toggle-icon { display:flex; align-items:center; justify-content:center; }
+    @keyframes bbPopIn { 0% { transform: scale(0.88); opacity:0; } 60% { transform: scale(1.03); opacity:1; } 100% { transform: scale(1); opacity:1; } }
+    .daily-complete-banner { display:flex; align-items:center; gap:12px; text-align:left; background: linear-gradient(135deg, rgba(22,163,74,0.10), rgba(34,197,94,0.16)); border:1px solid rgba(22,163,74,0.3); color:#15803d; padding:14px 16px; border-radius:14px; animation: bbPopIn 0.35s ease; }
+    .daily-complete-banner-icon { flex-shrink:0; width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg, #16a34a, #22c55e); color:#fff; display:flex; align-items:center; justify-content:center; box-shadow: 0 3px 8px rgba(22,163,74,0.4); }
+    .calendar-cell-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .plan-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary-color); }
+    .plan-day-title { font-weight: bold; color: var(--text-main); font-size: 14px; font-family: var(--font-heading); letter-spacing: 0.5px; }
+    .plan-passages { color: var(--text-muted); font-size: 12px; margin-top: 2px; word-break: break-word; font-family: var(--font-heading); letter-spacing: 0.3px; }
+
+    /* Search Results & Pagination */
+    .search-result { padding: 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .search-result:hover { background-color: rgba(99, 102, 241, 0.05); }
+    .search-result strong { font-family: var(--font-heading); color: var(--accent-teal); letter-spacing: 0.5px; font-size: 18px; }
+    .pagination { display: flex; gap: 8px; margin-top: 20px; justify-content: center; flex-wrap: wrap; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .page-btn { padding: 6px 10px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); cursor: pointer; border-radius: 4px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .page-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+
+    /* Resources Tab */
+    .search-bar { width: 100%; padding: 12px; margin-bottom: var(--spacing-md); border: 1px solid var(--border-color); border-radius: var(--border-radius); background-color: var(--card-bg); color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; }
+    .resource-grid-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--spacing-md); align-items: start; }
+    /* Standard-size, collapsible card: a fixed height while collapsed keeps every
+       card in the grid the same size regardless of how much notes/tags/admin
+       content it holds — click anywhere on the card (other than a link/button) to
+       reveal that content below, growing just that card.
+       Height must fit the tallest possible collapsed content: verse ref row + type
+       badge row + a full 2-line clamped title + the "Show more" indicator, plus
+       padding — measured at 174px with both rows present, so 172px was clipping
+       the very bottom of a genuinely 2-line title. 190px leaves real headroom above
+       that measurement for cross-browser/OS font-metric variance. */
+    .resource-card { border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: var(--spacing-md); background: var(--card-bg); font-family: 'Plus Jakarta Sans', sans-serif; position: relative; height: 190px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; transition: height 0.2s ease; }
+    .resource-card.expanded { height: auto; padding-bottom: 36px; overflow: visible; }
+    .resource-share-btn { position: absolute; bottom: 8px; right: 8px; }
+    .resource-card h3 { font-family: var(--font-heading); color: var(--text-main); font-size: 20px; letter-spacing: 0.5px; margin-top: 0; margin-bottom: 8px; }
+    /* Clamp the title to 2 lines while collapsed so a long title can never push the
+       expand/collapse control out of the fixed-height card. */
+    .resource-card:not(.expanded) h3 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .resource-card-details { display: none; }
+    .resource-card.expanded .resource-card-details { display: block; margin-top: 8px; }
+    .resource-card-toggle { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: auto; padding-top: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; color: var(--text-muted); }
+    .resource-card-toggle svg { transition: transform 0.2s ease; }
+    .resource-card.expanded .resource-card-toggle svg { transform: rotate(180deg); }
+    /* Same thumbnail-as-background treatment as a Church Resources column card (see
+       .church-resource-card.has-video-thumb) — kept in sync so a resource looks and
+       behaves the same whether seen here (Line Upon Line) or in the Note view. */
+    .resource-card.has-video-thumb { background-size: cover; background-position: center; color: #fff; border-color: transparent; }
+    .resource-card.has-video-thumb h3, .resource-card.has-video-thumb .church-resource-video-title { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.85); }
+    .resource-card.has-video-thumb .share-btn { background: rgba(0,0,0,0.5); color: #fff; }
+    .resource-card.has-video-thumb .share-btn:hover { background: rgba(0,0,0,0.7); color: #fff; }
+    .resource-card.has-video-thumb .page-btn { background: rgba(255,255,255,0.85); }
+    .resource-card.has-video-thumb .resource-card-toggle { color: rgba(255,255,255,0.85); }
+    /* A resource tagged "Booklet" whose thumbnail is an admin's own custom image
+       (not an auto-derived YouTube/direct-image thumbnail) is almost always that
+       booklet's front cover — the title and most identifying art sit at the TOP of
+       the image, which the default center-cropped background-position above can
+       cut off. Anchoring these specifically to the top keeps the cover's top edge
+       (and whatever's printed on it) visible instead. Higher specificity (three
+       classes) than the plain .has-video-thumb rules above, so this wins for just
+       this combination without touching every other thumbnail. */
+    .church-resource-card.has-video-thumb.thumb-top-align,
+    .resource-card.has-video-thumb.thumb-top-align { background-position: top center; }
+
+    /* Line Upon Line (Resources by Verse): Old/New Testament book lists + expanding panel */
+    .line-upon-line-search-row { margin: 0 0 16px 0; }
+    .line-upon-line-testament { margin-bottom: 24px; }
+    .line-upon-line-heading { font-family: var(--font-heading); font-size: 22px; color: var(--text-main); margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 2px solid var(--border-color); }
+    .line-upon-line-columns { column-count: 3; column-gap: 16px; }
+    /* 3 columns is too narrow on a phone for the longer book names ("1 Chronicles",
+       "1 Thessalonians", "Song of Solomon", ...) — they'd wrap onto a second line.
+       Fewer, wider columns keep every title on one row. */
+    @media (max-width: 600px) {
+      .line-upon-line-columns { column-count: 2; }
+      .line-upon-line-book { white-space: nowrap; }
+    }
+    @media (max-width: 400px) {
+      .line-upon-line-columns { column-count: 1; }
+    }
+    .line-upon-line-book { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; background: none; border: none; padding: 8px 6px; margin-bottom: 2px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; text-align: left; border-radius: 6px; break-inside: avoid; transition: background 0.15s, color 0.15s; }
+    .line-upon-line-book:hover { background: var(--bg-color); }
+    .line-upon-line-book.active { background: var(--primary-color); color: #fff; }
+    .line-upon-line-book.disabled { opacity: 0.4; }
+    .line-upon-line-count { font-size: 11px; font-weight: 700; background: rgba(99,102,241,0.15); color: var(--primary-color); border-radius: 999px; padding: 1px 7px; flex-shrink: 0; }
+    .line-upon-line-book.active .line-upon-line-count { background: rgba(255,255,255,0.25); color: #fff; }
+    .line-upon-line-panel { margin-top: 8px; padding-top: 16px; border-top: 2px solid var(--border-color); }
+    .line-upon-line-panel-title { font-family: var(--font-heading); font-size: 28px; color: var(--text-main); margin: 0 0 12px 0; }
+
+    #loader { display: none; text-align: center; padding: 40px 20px; color: var(--primary-color); }
+    .spinner { border: 4px solid rgba(99, 102, 241, 0.2); border-left-color: var(--primary-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    h3 { font-family: var(--font-heading); letter-spacing: 0.5px; }
+
+    @media(max-width: 1024px) {
+      .bible-grid { display: flex; flex-direction: column; }
+      .verse-row-wrap { display: flex; align-items: flex-start; gap: 8px; }
+      .verse-row-wrap .verse-row { flex: 1 1 auto; min-width: 0; }
+      .verse-row-wrap .verse-share-cell { flex: 0 0 auto; }
+    }
+
+    @media(max-width: 600px) {
+      /* Keep the real 7-day calendar grid on phones — just shrink cell
+         padding/text so all 7 columns still fit without wrapping. */
+      .calendar-cell { padding: 4px; min-height: 60px; }
+      .plan-day-title { font-size: 11px; }
+      .plan-passages { font-size: 9px; }
+
+      /* Audio/video player controls: shrink the circular buttons and reclaim
+         the space for the seek bar / video itself on narrow screens. */
+      .bible-study-info-panel button[onclick^="togglePlay"],
+      .bible-study-info-panel button[onclick^="skipAudio"] { width: 26px !important; height: 26px !important; }
+      .bible-study-info-panel iframe { height: 200px !important; }
+    }
+
+    /* MyMargins Tab Styles */
+    @media print {
+      /* The app's gradient lives on <body> itself (not inside #mymargins-print-area),
+         so the visibility:hidden trick below never touches it — pin it to plain white
+         explicitly or it bleeds through in any gap around the printed page. */
+      html, body { background: #fff !important; background-image: none !important; }
+      body * { visibility: hidden; }
+      #mymargins-print-area, #mymargins-print-area * { visibility: visible; }
+      #mymargins-print-area { position: absolute; left: 0; top: 0; width: 100%; }
+      .page-break { page-break-after: always; }
+      .no-print { display: none !important; }
+      .dict-page { border: none !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; }
+    }
+    .margin-entry { margin-bottom: 16px; font-family: 'Plus Jakarta Sans', sans-serif; break-inside: avoid; }
+    .margin-entry strong { display: block; color: var(--primary-color); font-family: var(--font-heading); font-size: 18px; letter-spacing: 0.5px; border-bottom: 1px dashed var(--border-color); padding-bottom: 4px; margin-bottom: 4px; }
+    .margin-entry p { margin: 0; color: var(--text-main); font-size: 14px; white-space: pre-wrap; }
+    .dict-page { border: 1px solid var(--border-color); padding: 24px; margin-bottom: 24px; background: white; border-radius: var(--border-radius); box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+    /* Running header for a MyMargins page: first reference on the page sits top-left,
+       last reference on the page sits top-right — like the running heads in a printed
+       reference book/dictionary. */
+    .dict-header-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px; font-family: var(--font-heading); font-size: 22px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .dict-header-row .dict-header-left { text-align: left; }
+    .dict-header-row .dict-header-right { text-align: right; }
+    /* Two-column body for the notes on each page, newspaper-style: entries flow
+       automatically from the left column into the right one. */
+    .dict-columns { column-count: 2; column-gap: 32px; }
+    @media(max-width: 700px) {
+      /* A 2-column reflow is unreadable on a phone-width screen; keep it single-column
+         on screen there and only render as two columns for print/wider viewports. */
+      .dict-columns { column-count: 1; }
+    }
+    @media print {
+      .dict-columns { column-count: 2; column-gap: 32px; }
+    }
+    /* MyMargins cover page */
+    .mymargins-cover-page { display: flex; align-items: center; justify-content: center; min-height: 70vh; text-align: center; }
+    @media print { .mymargins-cover-page { min-height: 90vh; } }
+    .mymargins-cover-inner { width: 100%; }
+    .mymargins-cover-title, .mymargins-cover-name { outline: none; border-bottom: 1px dashed transparent; cursor: text; }
+    .mymargins-cover-title:hover, .mymargins-cover-name:hover { border-bottom-color: var(--border-color); }
+    .mymargins-cover-title:focus, .mymargins-cover-name:focus { border-bottom-color: var(--primary-color); }
+    @media print { .mymargins-cover-title, .mymargins-cover-name { border-bottom-color: transparent !important; } }
+    .mymargins-cover-title { font-family: var(--font-heading); font-size: 56px; letter-spacing: 1px; color: var(--text-main); text-transform: uppercase; margin-bottom: 24px; }
+    .mymargins-cover-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; color: var(--text-muted); }
+    .mymargins-cover-hint { margin-top: 32px; font-size: 12px; color: var(--text-muted); font-style: italic; }
+    .dict-header { border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px; text-align: center; font-family: var(--font-heading); font-size: 28px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://ndjyjqubaxldzimoagfl.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kanlqcXViYXhsZHppbW9hZ2ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MzgzNjgsImV4cCI6MjEwMzAxNDM2OH0.J_FJ49CliFWaxCxzun12PBKe8Q5OmaS-KsI4cRR_uRk';
+
+    // --- "Remember this device" (login screen) ---
+    // Supabase Auth never stores the password anywhere after sign-in — only a
+    // short-lived access token plus a refresh token it uses to silently mint new
+    // ones. This preference only decides WHERE the SDK is allowed to keep those
+    // tokens: localStorage (survives closing the browser entirely) when the user
+    // opts in, or sessionStorage (wiped the moment the tab/browser closes) when
+    // they don't. Either way the password itself is never persisted anywhere,
+    // so this doesn't weaken account security — it only trades off convenience
+    // against how long a stolen/borrowed device would stay signed in.
+    const REMEMBER_DEVICE_PREF_KEY = 'bibleAppRememberDevice';
+    function isRememberDeviceEnabled() {
+      try { return localStorage.getItem(REMEMBER_DEVICE_PREF_KEY) === 'true'; } catch (e) { return false; }
+    }
+    function setRememberDevicePreference(remember) {
+      try {
+        if (remember) localStorage.setItem(REMEMBER_DEVICE_PREF_KEY, 'true');
+        else localStorage.removeItem(REMEMBER_DEVICE_PREF_KEY);
+      } catch (e) { /* private browsing, etc. — falls back to session-only, which is the safer default anyway */ }
+    }
+    // A storage adapter Supabase Auth reads/writes its session through. Writes go
+    // to localStorage or sessionStorage depending on the current preference (and
+    // always clear the other one, so a later toggle can't leave a stale copy of
+    // the session sitting in whichever store is no longer meant to hold it);
+    // reads check both, so a session already on disk is still found even if the
+    // remember preference itself was cleared (e.g. private-browsing storage
+    // restrictions) after it was written.
+    const rememberAwareAuthStorage = {
+      getItem(key) {
+        try {
+          const fromLocal = window.localStorage.getItem(key);
+          if (fromLocal !== null) return fromLocal;
+        } catch (e) {}
+        try { return window.sessionStorage.getItem(key); } catch (e) { return null; }
+      },
+      setItem(key, value) {
+        const remember = isRememberDeviceEnabled();
+        try {
+          if (remember) window.localStorage.setItem(key, value);
+          else window.localStorage.removeItem(key);
+        } catch (e) {}
+        try {
+          if (!remember) window.sessionStorage.setItem(key, value);
+          else window.sessionStorage.removeItem(key);
+        } catch (e) {}
+      },
+      removeItem(key) {
+        try { window.localStorage.removeItem(key); } catch (e) {}
+        try { window.sessionStorage.removeItem(key); } catch (e) {}
+      }
+    };
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, storage: rememberAwareAuthStorage }
+    });
+  </script>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- LOGIN MODAL — hidden until either the person opens it themselves (header
+         "Log In" button) or a login-only feature is used while signed out
+         (requireLogin()/ensureLoggedInFor() opens it automatically). Never blocks
+         the app underneath: browsing works fully signed out, this only pops up
+         on demand. Centers itself via fixed positioning + flex, independent of
+         the .container width, so it lands centered on any screen including desktop. -->
+    <div id="login-screen" onclick="if (event.target === this) closeLoginModal();">
+      <div class="login-box">
+        <button type="button" id="login-modal-close-btn" onclick="closeLoginModal()" aria-label="Close" title="Continue browsing without signing in">&times;</button>
+        <img src="https://ndjyjqubaxldzimoagfl.supabase.co/storage/v1/object/public/Assets/Images/Accordance%20Logo.png" alt="Accordance" style="max-width:500px; width:100%; height:auto; display:block; margin:0 auto 14px;">
+        <div id="share-signup-banner" style="display:none; background:linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color:#fff; border-radius:12px; padding:12px 16px; margin-bottom:16px; font-family:'Plus Jakarta Sans', sans-serif; font-size:13.5px; line-height:1.4; text-align:center;"></div>
+        <p id="login-modal-reason" style="display:none; background:rgba(99,102,241,0.10); border:1px solid rgba(99,102,241,0.3); color:var(--text-main); border-radius:10px; padding:10px 12px; margin-bottom:16px; font-size:13.5px; line-height:1.4; text-align:center;"></p>
+        <p id="auth-title" style="font-weight:700; font-size:16px; color:var(--text-main); margin:0 0 4px 0; text-align:center;">Sign In</p>
+        <p id="auth-subtitle" style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Enter your credentials to access your notes.</p>
+        <input type="email" id="auth-email" class="input-field" placeholder="Email address">
+        <input type="password" id="auth-password" class="input-field" placeholder="Password">
+        <label style="display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--text-main); margin:-6px 0 16px 2px; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">
+          <input type="checkbox" id="remember-device-checkbox" checked style="width:16px; height:16px; margin:0; flex-shrink:0;">
+          Remember this device
+        </label>
+        <button class="btn" id="auth-btn" onclick="handleAuth()">Sign In</button>
+        <p style="margin-top: 15px; font-size: 14px; color: var(--text-muted);">
+          <span id="auth-toggle-text">Don't have an account?</span>
+          <a href="#" onclick="toggleAuthMode()" style="color: var(--primary-color); text-decoration: underline;" id="auth-toggle-link">Sign Up</a>
+        </p>
+        <p id="login-error" style="color: var(--accent-coral); display: none; margin-top: 10px; font-size: 13px;"></p>
+      </div>
+    </div>
+
+    <!-- MAIN APP SCREEN -->
+    <div id="app-screen">
+
+      <div class="user-bar">
+        <div class="user-info-block">
+          <div class="user-info-line" id="user-info-logged-in" style="display:none;">
+            <span id="welcome-msg-label" style="color: white;">Logged in as:</span>
+            <span id="welcome-msg-username" style="color: white; font-weight: 700;"></span>
+          </div>
+          <div class="user-info-line" id="user-info-guest" style="display:none;">
+            <span style="color: white;">Browsing as guest</span>
+          </div>
+          <div class="user-info-actions">
+            <button id="settings-gear-btn" class="header-icon-btn" onclick="openSettingsView()" style="background:transparent; border:none; color:white; cursor:pointer; padding:0; display:flex; align-items:center;" title="Settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+            <button id="logout-btn" onclick="logout()" style="background:transparent; border:none; color: white; cursor:pointer; text-decoration:underline; padding:0; text-align:left; display:none;">Logout</button>
+            <button id="header-login-btn" onclick="openLoginModal()" style="background:transparent; border:none; color: white; cursor:pointer; text-decoration:underline; padding:0; text-align:left; font-weight:700; display:none;">Log In</button>
+          </div>
+        </div>
+        <button id="mymargins-header-btn" class="header-icon-btn" onclick="switchTab('mymargins')" style="background: transparent; border: none; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="MyMargins">
+          <img class="header-icon-img" src="https://ndjyjqubaxldzimoagfl.supabase.co/storage/v1/object/public/Assets/Images/mymargins-icon.png" alt="MyMargins" style="width: 40px; height: 40px; object-fit: contain;">
+        </button>
+
+        <button id="records-header-btn" class="header-icon-btn" onclick="openRecordsView()" style="background: transparent; border: none; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative;" title="Records">
+          <svg class="header-icon-img records-icon-svg" width="30.78" height="30.78" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 13.5 L5 22 L9.5 20.3 L11.5 23 L11.5 14 Z"></path>
+            <path d="M15 13.5 L19 22 L14.5 20.3 L12.5 23 L12.5 14 Z"></path>
+            <circle cx="12" cy="9" r="7" fill="#ffffff"></circle>
+          </svg>
+          <span id="records-notification-badge" class="nav-badge"></span>
+        </button>
+
+        <button id="cords-header-btn" class="header-icon-btn" onclick="openCordView()" style="background: transparent; border: none; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative;" title="Cords">
+          <img class="header-icon-img" src="https://ndjyjqubaxldzimoagfl.supabase.co/storage/v1/object/public/Assets/Images/cords-icon.png" alt="Cords" style="width: 40px; height: 40px; object-fit: contain;">
+          <span id="cords-notification-badge" class="nav-badge-inverse"></span>
+        </button>
+
+      </div>
+
+      <!-- "Now playing" mini player — hidden until some audio/video is playing AND its own player is out of view (see updateMiniPlayerVisibility). -->
+      <div id="media-mini-player" class="media-mini-player">
+        <span class="media-mini-player-icon" id="media-mini-player-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 9 7 9 12 4.5 12 19.5 7 15 3 15 3 9" fill="currentColor" stroke="currentColor"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 6a9 9 0 0 1 0 12"></path></svg>
+        </span>
+        <div class="media-mini-player-title-wrap"><span class="media-mini-player-title" id="media-mini-player-title">Now Playing</span></div>
+        <button type="button" class="media-mini-player-btn" id="media-mini-player-playpause" onclick="toggleMiniPlayerPlayback()" title="Play/Pause">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg>
+        </button>
+        <button type="button" class="media-mini-player-btn" onclick="stopMiniPlayerMedia()" title="Stop">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5"></rect></svg>
+        </button>
+      </div>
+
+      <!-- Full-screen video player — the one shared way every video in the app plays (see openFsvPlayer).
+           The tap-area is a transparent sibling layered ON TOP of the iframe (not a wrapper around it) —
+           the YouTube IFrame API replaces the iframe element itself each time a player is bound to it, and a
+           same-origin click handler can never see through a cross-origin iframe anyway, so the tap-to-reveal
+           gesture needs its own element that isn't the iframe (or a descendant of it) to keep working. -->
+      <div id="fsv-player" class="fsv-player">
+        <iframe id="fsv-iframe" class="fsv-iframe" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        <!-- Used instead of #fsv-iframe for a direct video file (.mp4 etc.) —
+             see isDirectVideoUrl/fsvLoadCurrentVideo. Native controls stay off
+             so only this app's own overlay controls show, matching the
+             YouTube path's controls=0. -->
+        <video id="fsv-video" class="fsv-iframe" style="display:none; background:#000;" playsinline webkit-playsinline></video>
+        <div id="fsv-autoplay-fallback" class="fsv-autoplay-fallback" onclick="fsvStartFromFallback()">
+          <span class="fsv-autoplay-fallback-text">Press Play to Begin</span>
+        </div>
+        <div class="fsv-tap-area" onclick="handleFsvTap()"></div>
+        <div id="fsv-controls" class="fsv-controls visible">
+          <button type="button" class="fsv-expand-btn" id="fsv-expand-btn" onclick="event.stopPropagation(); toggleFsvMiniMode();" title="Shrink to corner">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+          </button>
+          <button type="button" class="fsv-close-btn" onclick="event.stopPropagation(); closeFsvPlayer();" title="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+          <div class="fsv-title" id="fsv-title"></div>
+          <div class="fsv-bottom-bar" onclick="event.stopPropagation();">
+            <button type="button" class="fsv-btn" onclick="fsvBackTrack()" title="Previous video">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><polygon points="11 19 2 12 11 5 11 19"></polygon><rect x="13" y="5" width="3" height="14"></rect></svg>
+            </button>
+            <button type="button" class="fsv-btn" onclick="fsvSkip(-10)" title="Rewind 10 seconds">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button type="button" class="fsv-btn" id="fsv-playpause-btn" onclick="fsvTogglePlayPause()" title="Play">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
+            </button>
+            <button type="button" class="fsv-btn" onclick="fsvStop()" title="Stop">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><rect x="4" y="4" width="16" height="16" rx="1.5"></rect></svg>
+            </button>
+            <button type="button" class="fsv-btn" onclick="fsvSkip(10)" title="Fast forward 10 seconds">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg>
+            </button>
+            <button type="button" class="fsv-btn" onclick="fsvForwardTrack()" title="Next video">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><polygon points="13 19 22 12 13 5 13 19"></polygon><rect x="8" y="5" width="3" height="14"></rect></svg>
+            </button>
+          </div>
+          <button type="button" class="fsv-playlist-toggle" id="fsv-playlist-toggle" onclick="event.stopPropagation(); toggleFsvPlaylist();">Session Playlist</button>
+        </div>
+        <div class="fsv-playlist-panel" id="fsv-playlist-panel" onclick="event.stopPropagation();"></div>
+
+        <!-- Knowledge Check overlay: shown when the current video ends and has a
+             quiz attached (see showFsvKnowledgeCheck / onStateChange's ENDED case)
+             instead of auto-advancing to the next track. -->
+        <div id="fsv-knowledge-check" class="fsv-kc-overlay" onclick="event.stopPropagation();">
+          <div class="fsv-kc-card">
+            <div class="fsv-kc-eyebrow" id="fsv-kc-eyebrow">Knowledge Check</div>
+            <div class="fsv-kc-question" id="fsv-kc-question"></div>
+            <div class="fsv-kc-options" id="fsv-kc-options"></div>
+            <div class="fsv-kc-feedback" id="fsv-kc-feedback"></div>
+            <div class="fsv-kc-actions" id="fsv-kc-actions"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="nav-tabs">
+          <button class="nav-btn active" onclick="switchTab('bible')" title="Bible View">
+              <img src="https://ndjyjqubaxldzimoagfl.supabase.co/storage/v1/object/public/Assets/Images/notes-icon.png" alt="Notes" class="nav-favicon">
+              <span class="nav-label">Note</span>
+          </button>
+          <button class="nav-btn" onclick="switchTab('plan')" title="Reading Plan">
+              <img src="https://ndjyjqubaxldzimoagfl.supabase.co/storage/v1/object/public/Assets/Images/reading-plan-icon.png" alt="Reading Plan" class="nav-favicon">
+              <span class="nav-label">Read</span>
+              <span id="reading-notification-badge" class="nav-badge"></span>
+          </button>
+          <button class="nav-btn" onclick="switchTab('study')" title="Study">
+              <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAuNiAwLjYgMjcuNzMgMjMuNzYiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzYzNjZmMSIgc3Ryb2tlLXdpZHRoPSIxLjYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjYuMiIgaGVpZ2h0PSIyMCIgcng9IjEuNCIvPgogIDxsaW5lIHgxPSIyIiB5MT0iNi4yIiB4Mj0iOC4yIiB5Mj0iNi4yIi8+CiAgPGxpbmUgeDE9IjIiIHkxPSIxNy44IiB4Mj0iOC4yIiB5Mj0iMTcuOCIvPgogIDxyZWN0IHg9IjQuMSIgeT0iOSIgd2lkdGg9IjIiIGhlaWdodD0iNi42IiByeD0iMSIvPgoKICA8cmVjdCB4PSI4LjIiIHk9IjIiIHdpZHRoPSI2LjIiIGhlaWdodD0iMjAiIHJ4PSIxLjQiLz4KICA8bGluZSB4MT0iOC4yIiB5MT0iNi4yIiB4Mj0iMTQuNCIgeTI9IjYuMiIvPgogIDxsaW5lIHgxPSI4LjIiIHkxPSIxNy44IiB4Mj0iMTQuNCIgeTI9IjE3LjgiLz4KICA8cmVjdCB4PSIxMC4zIiB5PSI5IiB3aWR0aD0iMiIgaGVpZ2h0PSI2LjYiIHJ4PSIxIi8+CgogIDxnIHRyYW5zZm9ybT0icm90YXRlKDE4IDE3LjggMjIpIj4KICAgIDxyZWN0IHg9IjE0LjciIHk9IjIiIHdpZHRoPSI2LjIiIGhlaWdodD0iMjAiIHJ4PSIxLjQiLz4KICAgIDxsaW5lIHgxPSIxNC43IiB5MT0iNi4yIiB4Mj0iMjAuOSIgeTI9IjYuMiIvPgogICAgPGxpbmUgeDE9IjE0LjciIHkxPSIxNy44IiB4Mj0iMjAuOSIgeTI9IjE3LjgiLz4KICAgIDxyZWN0IHg9IjE2LjgiIHk9IjkiIHdpZHRoPSIyIiBoZWlnaHQ9IjYuNiIgcng9IjEiLz4KICA8L2c+Cjwvc3ZnPgo=" alt="Study" class="nav-favicon" style="transform: rotate(180deg);">
+              <span class="nav-label">Study</span>
+              <span id="study-notification-badge" class="nav-badge"></span>
+          </button>
+      </div>
+
+      <div id="loader">
+        <div class="spinner"></div>
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500;">Syncing data...</span>
+      </div>
+
+      <!-- BIBLE TAB -->
+      <div id="bible-tab" class="tab-content active">
+        <div class="controls-row">
+          <select id="translation-select" onchange="handleTranslationChange()"></select>
+          <input type="text" id="bible-search-box" placeholder="Word/verse..." onkeypress="if(event.key === 'Enter') processBibleSearch()">
+          <button class="btn" style="width: auto;" onclick="processBibleSearch()">Search</button>
+        </div>
+
+        <!-- Kept as a persistent container (never wiped by innerHTML replacement)
+             so the book/chapter <select> elements it holds stay the SAME DOM nodes
+             across re-renders — see renderBibleControlsRow(). -->
+        <div id="bible-book-chapter-row"></div>
+        <div id="bible-text"></div>
+        <div id="pagination-area" class="pagination"></div>
+      </div>
+
+      <!-- READING PLAN NOTIFICATION PANEL (collapsible, shown above the Reading Plan tab) -->
+      <div id="reading-notification-panel" style="display:none; background:var(--card-bg); border:1px solid var(--border-color); border-radius:var(--border-radius); margin-bottom:16px; overflow:hidden;">
+        <div class="reading-notif-header" onclick="toggleReadingNotifPanel()">
+          <span>Reading Updates</span>
+          <span id="reading-notif-toggle-icon">▾</span>
+        </div>
+        <div id="reading-notif-body" class="reading-notif-body" onclick="goToPlanNotificationTarget()"></div>
+      </div>
+
+      <!-- READING PLAN TAB -->
+      <div id="plan-tab" class="tab-content">
+        <div class="plan-header-bar" style="display: flex; flex-direction: row; align-items: center; gap: 8px; width: 100%;">
+          <select id="plan-translation-select" onchange="renderActivePlanView()"></select>
+          <select id="schedule-select" class="input-field" style="margin-bottom: 0; flex: 1; min-width: 150; font-family: var(--font-heading); font-size: 16px;" onchange="loadReadingSchedule()"></select>
+          <button id="plan-start-restart-btn" class="btn" style="width: auto; flex-shrink: 0; white-space: nowrap; background: var(--accent-teal); padding: 6px 10px; font-size: 12px;" onclick="handleStartOrRestartPlan()">Start Plan</button>
+        </div>
+
+        <div class="plan-sub-tabs" id="plan-sub-tabs-row">
+          <button class="plan-sub-btn active" id="plan-sub-reading" onclick="switchPlanSubTab('reading')" title="Daily Reading View" style="display:flex; align-items:center; justify-content:center; padding:8px 16px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5A2.5 2.5 0 0 1 4.5 2H12v20H4.5A2.5 2.5 0 0 1 2 19.5v-15Z"></path><path d="M22 4.5A2.5 2.5 0 0 0 19.5 2H12v20h7.5a2.5 2.5 0 0 0 2.5-2.5v-15Z"></path></svg>
+          </button>
+          <div id="daily-reading-tts-wrap" class="tts-wrap-collapsed">
+            <button class="plan-sub-btn" id="daily-reading-rewind-btn" onclick="skipDailyReadingTts(-10)" title="Rewind 10 seconds" style="display:none; align-items:center; justify-content:center; padding:8px 12px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button class="plan-sub-btn" id="daily-reading-tts-btn" onclick="toggleDailyReadingTts()" title="Play today's reading aloud" style="display:flex; align-items:center; justify-content:center; padding:8px 16px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
+            </button>
+            <button class="plan-sub-btn" id="daily-reading-forward-btn" onclick="skipDailyReadingTts(10)" title="Fast forward 10 seconds" style="display:none; align-items:center; justify-content:center; padding:8px 12px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg>
+            </button>
+          </div>
+          <button class="plan-sub-btn" id="plan-sub-calendar" onclick="switchPlanSubTab('calendar')" title="Calendar View" style="display:flex; align-items:center; justify-content:center; padding:8px 16px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+          </button>
+        </div>
+        <div id="daily-reading-continue-prompt" class="daily-reading-continue-prompt" style="display:none;">
+          <span id="daily-reading-continue-text"></span>
+          <div class="daily-reading-continue-actions">
+            <button type="button" class="btn" style="width:auto; padding:6px 18px;" onclick="respondToDailyReadingContinuePrompt(true)">Yes</button>
+            <button type="button" class="page-btn" onclick="respondToDailyReadingContinuePrompt(false)">No</button>
+          </div>
+        </div>
+        <div id="schedule-content">
+          <div style="padding: 20px; text-align: center; color: var(--text-muted); background: var(--bg-color); border-radius: var(--border-radius);">
+            Loading reading assignments...
+          </div>
+        </div>
+      </div>
+
+      <!-- STUDY TAB -->
+      <div id="study-tab" class="tab-content">
+        <div class="plan-sub-tabs study-sub-tabs-row">
+          <button class="plan-sub-btn study-sub-btn" id="study-sub-course" onclick="switchStudySubTab('course')">
+            <svg class="study-subtab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M6 10.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5"/><path d="M22 8v6"/></svg>
+            TW Bible Course<span id="study-sub-course-badge" class="subtab-badge"></span>
+          </button>
+          <button class="plan-sub-btn study-sub-btn" id="study-sub-foundations" onclick="switchStudySubTab('foundations')">
+            <!-- "Core-D" icon: a sphere cut away to reveal its layers down to
+                 the center — echoes the class icon the user supplied (a
+                 planet-style cutaway), redrawn as a single-color flat shape
+                 (solid left hemisphere + concentric half-rings on the right)
+                 to match the flat-fill style of the other sub-option icons
+                 above (see the "By the Book" shelf icon just before this). -->
+            <svg class="study-subtab-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12,1 A11,11 0 0,0 12,23 Z"/>
+              <path d="M12,1 A11,11 0 0,1 12,23 L12,20.3 A8.3,8.3 0 0,0 12,3.7 Z"/>
+              <path d="M12,5 A7,7 0 0,1 12,19 L12,16.3 A4.3,4.3 0 0,0 12,7.7 Z"/>
+              <path d="M12,8.7 A3.3,3.3 0 0,1 12,15.3 Z"/>
+            </svg>
+            Core-D<span id="study-sub-foundations-badge" class="subtab-badge"></span>
+          </button>
+          <button class="plan-sub-btn active study-sub-btn" id="study-sub-resources" onclick="switchStudySubTab('resources')">
+            <svg class="study-subtab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="14" height="10" rx="1"/><ellipse cx="5" cy="12" rx="1.6" ry="5.5"/><ellipse cx="19" cy="12" rx="1.6" ry="5.5"/><line x1="8.5" y1="10.3" x2="15.5" y2="10.3"/><line x1="8.5" y1="13.7" x2="15.5" y2="13.7"/></svg>
+            Line Upon Line<span id="study-sub-resources-badge" class="subtab-badge"></span>
+          </button>
+          <button class="plan-sub-btn study-sub-btn" id="study-sub-bible-studies" onclick="switchStudySubTab('bible-studies')">
+            <svg class="study-subtab-icon study-subtab-icon-shelf" viewBox="0 0 100 50" fill="currentColor">
+              <rect x="14" y="14" width="9" height="22" rx="1.5"/>
+              <rect x="26" y="8" width="7" height="28" rx="1.5"/>
+              <rect x="36" y="18" width="11" height="18" rx="1.5"/>
+              <rect x="50" y="10" width="8" height="26" rx="1.5"/>
+              <g transform="rotate(-14 68 24)"><rect x="63" y="12" width="10" height="24" rx="1.5"/></g>
+              <rect x="78" y="16" width="9" height="20" rx="1.5"/>
+              <rect x="0" y="36" width="100" height="5" rx="1.5"/>
+              <path d="M6 41 L12 41 L6 48 Z"/>
+              <path d="M94 41 L88 41 L94 48 Z"/>
+            </svg>
+            By the Book<span id="study-sub-bible-studies-badge" class="subtab-badge"></span>
+          </button>
+        </div>
+
+        <div id="study-sub-course-content" class="study-sub-content">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+            <div>
+              <h2 style="font-family: var(--font-heading); margin: 0 0 4px 0; font-size: 32px; color: var(--text-main); cursor:pointer;" onclick="closeTWModule()" title="Back to all modules">TW Bible Course</h2>
+              <div style="color: var(--text-muted); font-size: 14px; margin-bottom: 12px; font-family: 'Plus Jakarta Sans', sans-serif;">The Word of God is the foundation of knowledge.</div>
+            </div>
+            <button id="tw-course-admin-entry-btn" class="page-btn" style="display:none; white-space:nowrap;" onclick="openTWCourseAdminView()">⚙ Manage Content</button>
+          </div>
+          <div id="tw-course-content"></div>
+          <div id="tw-course-detail-panel" class="foundations-detail-panel" style="display:none;"></div>
+        </div>
+
+        <div id="study-sub-resources-content" class="study-sub-content active">
+          <h2 style="font-family: var(--font-heading); margin: 0 0 12px 0; font-size: 32px; color: var(--text-main);">Resources by Verse</h2>
+          <!-- Persistent, never rebuilt by renderResourcesTab()/live sync — so typing
+               here (and this box's own focus/cursor) survives every re-render the same
+               way #foundations-search-input does for Core-D. See
+               renderLineUponLineSearchResults(). -->
+          <div class="line-upon-line-search-row">
+            <input type="text" id="line-upon-line-search-input" class="input-field" style="margin-bottom:0;" placeholder="Search all Church Resources…" oninput="renderLineUponLineSearchResults()">
+          </div>
+          <!-- Left empty whenever the search box is empty, so there's nothing between
+               it and the Old Testament heading below until the user actually searches. -->
+          <div id="line-upon-line-search-results"></div>
+          <!-- Admin-only "add a resource" form — persistent (never rebuilt by
+               renderResourcesTab()/live sync, same reasoning as the search box
+               above), hidden entirely for non-admins. Visibility and the "+ Add
+               Resource" toggle are both driven by renderResourcesTab() itself
+               (see there) so this always reflects the current sign-in state. -->
+          <div id="line-upon-line-add-resource-row" style="display:none; margin-bottom:16px;">
+            <button type="button" class="page-btn" onclick="toggleLineUponLineAddForm()">+ Add Resource</button>
+            <div id="line-upon-line-add-form" class="church-resource-input-container" style="display:none; flex-direction:column; gap:6px; margin-top:8px; padding:12px; border:1px solid var(--border-color); border-radius:var(--border-radius); background:var(--card-bg);">
+              <!-- Required — see addLineUponLineResource(). Unlike the Note view's
+                   per-verse form, there's no "current verse" to default to here, so
+                   this starts empty and the admin must type a full reference
+                   (e.g. "Genesis 1:1"), which is what ties the new resource to that
+                   verse's Church Resources column back in the Note view. -->
+              <input type="text" id="lul-add-reference-input" placeholder="Reference(s), e.g. Genesis 1:1, John 3:16..." style="width:100%;">
+              <input type="text" id="lul-add-title-input" placeholder="Title (visible title)..." style="width:100%;">
+              <input type="text" id="lul-add-url-input" placeholder="URL..." style="width:100%;">
+              <input type="text" id="lul-add-type-input" placeholder="Type..." style="width:100%;">
+              <input type="text" id="lul-add-tags-input" placeholder="Tags (e.g. Grace, Faith)..." style="width:100%;">
+              <textarea id="lul-add-notes-input" placeholder="Notes..." style="width:100%; min-height:40px; padding:6px 10px; font-size:13px; font-family:'Plus Jakarta Sans', sans-serif; border:1px solid var(--border-color); border-radius:var(--border-radius); resize:vertical;"></textarea>
+              <input type="text" id="lul-add-thumbnail-input" placeholder="Custom thumbnail URL (optional)..." style="width:100%;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); cursor:pointer; font-weight:normal;">
+                <input type="checkbox" class="plan-checkbox" id="lul-add-hide-thumbnail-input">Hide thumbnail
+              </label>
+              <div style="display:flex; gap:6px;">
+                <button class="btn" style="padding:6px 12px; font-size:13px; width:auto;" onclick="addLineUponLineResource()">Save Resource</button>
+                <button type="button" class="page-btn" onclick="cancelLineUponLineAddForm()">Cancel</button>
+              </div>
+            </div>
+          </div>
+          <div id="resource-grid"></div>
+        </div>
+
+        <div id="study-sub-foundations-content" class="study-sub-content">
+          <div class="foundations-header-row">
+            <div>
+              <h2 style="font-family: var(--font-heading); margin: 0 0 4px 0; font-size: 32px; color: var(--text-main); cursor: pointer;" onclick="closeFoundationsItem()" title="Back to all classes">Core-D</h2>
+              <div style="color: var(--text-muted); font-size: 14px; font-family: 'Plus Jakarta Sans', sans-serif;">Modules centered on fundamental doctrines ("the core") of Christian biblical teachings.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <button id="foundations-admin-entry-btn" class="page-btn" style="display:none; white-space:nowrap;" onclick="openFoundationsAdminView()">⚙ Manage Content</button>
+              <button class="foundations-search-btn" title="Search" onclick="focusFoundationsSearch()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Search box is shown by default now (no "Filters" toggle to open it
+               first) — one less click for what's easily the most-used control
+               on this screen. -->
+          <div class="foundations-search-row" id="foundations-search-row">
+            <input type="text" id="foundations-search-input" class="input-field" style="margin-bottom:0;" placeholder="Search classes or presenters…" oninput="renderFoundationsList()">
+          </div>
+
+          <div class="foundations-pills-row" id="foundations-pills-row"></div>
+
+          <div class="foundations-filters-row">
+            <button class="foundations-clear-filters" id="foundations-clear-filters-btn" onclick="clearFoundationsFilters()">Clear Filters</button>
+          </div>
+
+          <div class="foundations-list" id="foundations-list"></div>
+
+          <div id="foundations-detail-panel" class="foundations-detail-panel" style="display:none;"></div>
+        </div>
+
+        <div id="study-sub-bible-studies-content" class="study-sub-content">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+            <div>
+              <h2 style="font-family: var(--font-heading); margin: 0 0 4px 0; font-size: 32px; color: var(--text-main);">Books of the Bible</h2>
+              <div style="color: var(--text-muted); font-size: 14px; font-family: 'Plus Jakarta Sans', sans-serif; margin-bottom: 12px;">Pull a book off the shelf to explore its study sessions.</div>
+            </div>
+            <button id="book-admin-entry-btn" class="page-btn" style="display:none; white-space:nowrap;" onclick="openBookAdminView()">⚙ Manage Content</button>
+          </div>
+          <select id="bible-study-book-select" class="input-field" onchange="selectBibleStudyBookFromDropdown(this.value)"></select>
+          <div class="bible-study-legend">
+            <div class="bible-study-ruler-viewport" id="bible-study-ruler-viewport">
+              <div class="bible-study-ruler-track" id="bible-study-ruler-track">
+                <div class="bible-study-ruler-spacer" id="bible-study-ruler-lead"></div>
+                <div class="bible-study-legend-section" id="bible-study-legend-section-ot">
+                  <div class="bible-study-dim-line" id="bible-study-dim-line-ot">
+                    <svg class="bible-study-dim-line-svg" id="bible-study-dim-line-ot-svg" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"></svg>
+                    <span class="bible-study-dim-label" id="bible-study-dim-label-ot">Old Testament</span>
+                  </div>
+                  <div class="bible-study-color-codes" id="bible-study-color-codes-ot"></div>
+                </div>
+                <div class="bible-study-ruler-spacer" id="bible-study-ruler-mid"></div>
+                <div class="bible-study-legend-section" id="bible-study-legend-section-nt">
+                  <div class="bible-study-dim-line" id="bible-study-dim-line-nt">
+                    <svg class="bible-study-dim-line-svg" id="bible-study-dim-line-nt-svg" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"></svg>
+                    <span class="bible-study-dim-label" id="bible-study-dim-label-nt">New Testament</span>
+                  </div>
+                  <div class="bible-study-color-codes" id="bible-study-color-codes-nt"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="bible-study-shelf" class="bible-study-shelf"></div>
+          <div id="bible-study-info-panel" class="bible-study-info-panel" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- MY MARGINS TAB -->
+      <div id="mymargins-tab" class="tab-content">
+        <div class="cord-view-header" style="justify-content: space-between; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h2 class="cord-view-title">MyMargins</h2>
+          </div>
+          <button class="btn no-print" style="width: auto;" onclick="printMyMargins()">Print</button>
+        </div>
+        <div id="mymargins-print-area">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- CORDS VIEW (opened from the header Cords button, accessible from any tab) -->
+      <div id="cord-view" class="tab-content">
+        <div class="cord-view-header">
+          <h2 class="cord-view-title">Cords</h2>
+        </div>
+        <div id="cord-view-body"></div>
+      </div>
+
+      <!-- RECORDS VIEW (opened from the header Records ribbon button, accessible from any
+           tab). Badge definitions live in record_badges (admin-managed); which ones a user
+           has actually earned, and how many times, lives in records. -->
+      <div id="records-view" class="tab-content">
+        <div class="cord-view-header">
+          <h2 class="cord-view-title">Records</h2>
+        </div>
+
+        <div id="record-admin-entry" style="display:none; margin-bottom:16px;">
+          <button type="button" class="page-btn" onclick="toggleRecordAdminForm()">+ Add / Edit Badge</button>
+          <div id="record-admin-form" class="book-admin-item-card" style="display:none; margin-top:12px;">
+            <div class="book-admin-field-row">
+              <div style="flex:1 1 100%;">
+                <label>Editing</label>
+                <select id="record-admin-edit-select" class="input-field" style="margin-bottom:0;" onchange="handleRecordAdminEditSelectChange()">
+                  <option value="">— New Badge —</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="book-admin-field-row">
+              <div style="flex:1 1 100%;">
+                <label>Preview</label>
+                <div id="record-admin-badge-preview" style="display:flex; gap:18px; align-items:flex-start; background:var(--bg-color); border:1px solid var(--border-color); border-radius:var(--border-radius); padding:14px;"></div>
+              </div>
+            </div>
+
+            <div class="book-admin-field-row">
+              <div style="flex:1 1 160px;">
+                <label>Title</label>
+                <input type="text" id="record-admin-title" class="input-field" style="margin-bottom:0;" placeholder="e.g. Plan Finisher" oninput="updateRecordAdminBadgePreview()">
+              </div>
+              <div style="flex:1 1 160px;">
+                <label>Section</label>
+                <input type="text" id="record-admin-section" class="input-field" style="margin-bottom:0;" placeholder="e.g. Reading Plans" list="record-admin-section-list">
+                <datalist id="record-admin-section-list"></datalist>
+              </div>
+            </div>
+            <div class="book-admin-field-row">
+              <div style="flex:1 1 100%;">
+                <label>Group (optional — badges sharing a group name are shown together as a set, e.g. "Margin Notes")</label>
+                <input type="text" id="record-admin-group" class="input-field" style="margin-bottom:0;" placeholder="Leave blank for no grouping" list="record-admin-group-list">
+                <datalist id="record-admin-group-list"></datalist>
+              </div>
+            </div>
+            <div class="book-admin-field-row">
+              <div style="flex:1 1 100%;">
+                <label>Icon</label>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <select id="record-admin-icon-picker" class="input-field" style="margin-bottom:0; flex:1;" onchange="handleRecordAdminIconPickerChange()">
+                    <option value="">Pick an icon…</option>
+                  </select>
+                  <span id="record-admin-icon-preview" style="width:32px; height:32px; flex-shrink:0; display:flex; align-items:center; justify-content:center;"></span>
+                </div>
+                <input type="hidden" id="record-admin-icon">
+              </div>
+            </div>
+            <div class="book-admin-field-row">
+              <div style="flex:1 1 100%;">
+                <label>Description</label>
+                <input type="text" id="record-admin-description" class="input-field" style="margin-bottom:0;" placeholder="What does earning this badge mean?">
+              </div>
+            </div>
+
+            <div class="book-admin-field-row">
+              <div style="flex:1 1 100%;">
+                <label>Automatically award this badge when…</label>
+                <select id="record-admin-trigger-type" class="input-field" style="margin-bottom:0;" onchange="handleRecordAdminTriggerTypeChange()">
+                  <option value="">Nothing — manual/cosmetic badge only</option>
+                  <option value="margin_notes_count">A subscriber saves a number of Margin Notes</option>
+                  <option value="reading_plan_completed">A subscriber completes a specific Reading Plan</option>
+                  <option value="book_resources_clicked">A subscriber clicks every resource in one Book of the Bible</option>
+                  <option value="book_group_resources_clicked">A subscriber clicks every resource across a group of Books</option>
+                  <option value="tw_module_completed">A subscriber completes a specific TW Bible Course Module</option>
+                  <option value="tw_course_completed">A subscriber completes the entire TW Bible Course</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="record-admin-threshold-field" class="book-admin-field-row" style="display:none;">
+              <div style="flex:1 1 160px;">
+                <label>Number of margin notes required</label>
+                <input type="number" id="record-admin-threshold" class="input-field" style="margin-bottom:0;" min="1" placeholder="e.g. 25">
+              </div>
+            </div>
+
+            <div id="record-admin-schedule-field" class="book-admin-field-row" style="display:none;">
+              <div style="flex:1 1 220px;">
+                <label>Reading plan</label>
+                <select id="record-admin-schedule" class="input-field" style="margin-bottom:0;"></select>
+              </div>
+            </div>
+
+            <div id="record-admin-tw-module-field" class="book-admin-field-row" style="display:none;">
+              <div style="flex:1 1 220px;">
+                <label>TW Bible Course Module</label>
+                <select id="record-admin-tw-module" class="input-field" style="margin-bottom:0;"></select>
+              </div>
+            </div>
+
+            <div id="record-admin-book-field" class="book-admin-field-row" style="display:none;">
+              <div style="flex:1 1 220px;">
+                <label>Book</label>
+                <select id="record-admin-book" class="input-field" style="margin-bottom:0;"></select>
+              </div>
+            </div>
+
+            <div id="record-admin-book-group-field" class="book-admin-field-row" style="display:none;">
+              <div style="flex:1 1 100%;">
+                <label>Books in this group (check all that apply)</label>
+                <div id="record-admin-book-group-list" style="max-height:180px; overflow-y:auto; border:1px solid var(--border-color); border-radius:var(--border-radius); background:var(--card-bg); padding:8px;"></div>
+              </div>
+            </div>
+
+            <div class="book-admin-field-row" style="align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="record-admin-tallied" style="width:18px; height:18px; margin:0;" onchange="updateRecordAdminBadgePreview()">
+                <label style="margin:0;" for="record-admin-tallied">Tallied (count repeat achievements)</label>
+              </div>
+              <button type="button" class="btn" style="width:auto;" onclick="saveRecordBadge()">Save Badge</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="record-badges-grid"></div>
+      </div>
+
+      <!-- SETTINGS VIEW (opened from the header gear button, accessible from any tab) -->
+      <div id="settings-view" class="tab-content">
+        <div class="cord-view-header">
+          <h2 class="cord-view-title">Settings</h2>
+        </div>
+
+        <!-- Shown instead of the account-only sections below when browsing as a guest. -->
+        <div class="settings-section" id="settings-guest-notice" style="display:none; text-align:center;">
+          <p class="settings-hint" style="margin-bottom:12px;">Sign in to manage your Cords name/search settings, or to delete an account.</p>
+          <button type="button" class="btn" style="width:auto;" onclick="openLoginModal('Sign in to manage your account settings.')">Log In</button>
+        </div>
+
+        <div id="settings-account-sections">
+          <div class="settings-section">
+            <label class="settings-label">Cords Display Name</label>
+            <p class="settings-hint">This is the name others see in your Cords conversations, in place of your username.</p>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <input type="text" id="settings-display-name-input" class="input-field" style="margin-bottom:0; flex:1 1 200px;" placeholder="Enter a display name" maxlength="40">
+              <button type="button" class="btn" style="width:auto; flex-shrink:0;" onclick="saveCordDisplayName()">Save</button>
+            </div>
+            <p id="settings-display-name-status" style="font-size:13px; margin-top:6px; display:none;"></p>
+          </div>
+
+          <div class="settings-section">
+            <label class="settings-label">Cords Search</label>
+            <p class="settings-hint">Controls who can find you in the "Enter Username/Display Name" box to start a new cord.</p>
+
+            <label class="settings-radio-option">
+              <input type="radio" name="search-visibility" value="searchable" onchange="updateSearchVisibility('searchable')">
+              <span class="settings-radio-text">
+                <span class="settings-radio-title">Searchable</span>
+                <span class="settings-radio-desc">Anyone can find you by your username or your display name.</span>
+              </span>
+            </label>
+
+            <label class="settings-radio-option">
+              <input type="radio" name="search-visibility" value="username_only" onchange="updateSearchVisibility('username_only')">
+              <span class="settings-radio-text">
+                <span class="settings-radio-title">Username Only</span>
+                <span class="settings-radio-desc">Only people who already know your exact username can invite you to a cord — your display name won't turn up in search.</span>
+              </span>
+            </label>
+
+            <label class="settings-radio-option">
+              <input type="radio" name="search-visibility" value="unfindable" onchange="updateSearchVisibility('unfindable')">
+              <span class="settings-radio-text">
+                <span class="settings-radio-title">Unfindable</span>
+                <span class="settings-radio-desc">You can't be found at all — no one can start a new cord with you.</span>
+              </span>
+            </label>
+
+            <p id="settings-visibility-status" style="font-size:13px; margin-top:6px; display:none;"></p>
+          </div>
+
+          <div class="settings-section settings-danger-zone">
+            <label class="settings-label" style="color:var(--accent-coral);">Danger Zone</label>
+            <p class="settings-hint">Permanently delete your account and remove your information from every table — margin notes, records, reading progress, and cords. This cannot be undone.</p>
+            <button type="button" class="btn" style="width:auto; background:var(--accent-coral); box-shadow:none;" onclick="confirmDeleteAccount()">Delete Account</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <label class="settings-label">Appearance</label>
+          <div class="settings-toggle-row">
+            <span id="settings-theme-label">Light Mode</span>
+            <label class="theme-switch">
+              <input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode()">
+              <span class="theme-switch-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- DELETE ACCOUNT CONFIRMATION MODAL -->
+      <div id="delete-account-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:2000; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:var(--card-bg); border-radius:var(--border-radius); padding:24px; max-width:380px; width:100%; text-align:center; font-family:'Plus Jakarta Sans', sans-serif;">
+          <h3 style="margin-top:0; color:var(--accent-coral); font-family:var(--font-heading); font-size:26px; letter-spacing:0.5px;">Delete Account?</h3>
+          <p style="color:var(--text-main); font-size:14px; line-height:1.5;">This will permanently delete your account and remove all of your notes, records, reading progress, and cords. <strong>This action cannot be undone.</strong></p>
+          <div style="display:flex; gap:10px; margin-top:16px;">
+            <button type="button" class="btn" style="background:var(--text-muted); box-shadow:none;" onclick="closeDeleteAccountModal()">Cancel</button>
+            <button type="button" class="btn" id="confirm-delete-account-btn" style="background:var(--accent-coral); box-shadow:none;" onclick="performAccountDeletion()">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TW BIBLE COURSE COMPLETION — shown once, only to a Subscriber, the
+           moment they finish the whole course (see maybeShowTWCourseCompletionModal
+           in markTWLessonComplete). Styled like every other modal in the app
+           (see .login-box). -->
+      <div id="tw-course-completion-modal" onclick="if (event.target === this) closeTWCourseCompletionModal();">
+        <div class="tw-completion-box">
+          <button type="button" class="tw-completion-close-btn" onclick="closeTWCourseCompletionModal()" aria-label="Close" title="Close">&times;</button>
+          <div class="tw-completion-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <h3 class="tw-completion-title">Course Complete!</h3>
+          <p class="tw-completion-message">Great job, you just completed the TW Bible Course! If you are interested in taking the next step in your journey, then reach out to one of our local ministers to see about attending services.</p>
+          <a class="tw-completion-cta" href="https://www.tomorrowsworld.org/find-congregation-near-you" target="_blank" rel="noopener" onclick="closeTWCourseCompletionModal()">Take the Next Step</a>
+        </div>
+      </div>
+
+      <!-- SHARE SHEET (opened from any content share icon — the verse share button and
+           every resource share button — offering "send in a Cord" alongside the
+           existing copy-link / device-share options). -->
+      <div id="share-sheet-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:2000; align-items:flex-end; justify-content:center; padding:0;" onclick="if(event.target===this) closeShareSheet();">
+        <div style="background:var(--card-bg); border-radius:20px 20px 0 0; padding:18px; max-width:420px; width:100%; font-family:'Plus Jakarta Sans', sans-serif; max-height:78vh; display:flex; flex-direction:column;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-shrink:0;">
+            <span id="share-sheet-title" style="font-weight:800; font-size:15px; color:var(--text-main);">Share</span>
+            <button type="button" onclick="closeShareSheet()" style="background:none; border:none; font-size:22px; line-height:1; color:var(--text-muted); cursor:pointer; padding:2px 6px;">&times;</button>
+          </div>
+          <div id="share-sheet-cord-list" style="overflow-y:auto; flex:1 1 auto; min-height:0; margin-bottom:12px;"></div>
+          <div style="display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--border-color); padding-top:12px; flex-shrink:0;">
+            <button type="button" class="page-btn" style="width:100%;" onclick="shareSheetCopyLink()">Copy Link</button>
+            <button type="button" class="page-btn" id="share-sheet-device-btn" style="width:100%; display:none;" onclick="shareSheetDeviceShare()">Share via Device</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOOK OF THE BIBLE ADMIN EDITOR (opened from "Manage Content" in the Books of the
+           Bible sub-tab; admins only). Saves straight to the bible_study_books table, so
+           content goes live for everyone immediately — no more hand-editing this file. -->
+      <div id="book-admin-tab" class="tab-content">
+        <div class="cord-view-header">
+          <button class="cord-view-back-btn" onclick="closeBookAdminView()" title="Back">&larr;</button>
+          <h2 class="cord-view-title">Manage Content</h2>
+        </div>
+
+        <div class="book-admin-item-card" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div style="color:var(--text-muted); font-size:12px; flex:1 1 220px;">One-time: copies the built-in demo books (Genesis, Joshua, Judges, Ruth, etc. — whatever is currently hard-coded in the app) into the database so they show up here and can be edited like any other book. Anything already in the database is left untouched.</div>
+          <button type="button" class="page-btn" style="white-space:nowrap;" onclick="importHardcodedBooksToDB()">Import Existing Books</button>
+        </div>
+
+        <div class="book-admin-field-row">
+          <div style="flex: 1 1 220px;">
+            <label>Book</label>
+            <select id="book-admin-select" class="input-field" style="margin-bottom:0;" onchange="handleBookAdminSelectChange()"></select>
+          </div>
+        </div>
+
+        <div id="book-admin-form" style="display:none;">
+          <div class="book-admin-field-row">
+            <div style="flex: 1 1 220px;">
+              <label>Shelf Group</label>
+              <select id="book-admin-shelf-group" class="input-field" style="margin-bottom:0;" onchange="handleBookAdminShelfGroupChange()"></select>
+            </div>
+            <div id="book-admin-delete-shelf-group-field" style="display:none; flex:0 0 auto; align-self:flex-end;">
+              <button type="button" class="page-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fca5a5; white-space:nowrap;" onclick="deleteBookAdminShelfGroup()">Remove Grouping…</button>
+            </div>
+          </div>
+          <div id="book-admin-new-group-name-field" class="book-admin-field-row" style="display:none;">
+            <div style="flex: 1 1 220px;">
+              <label>New group name</label>
+              <input type="text" id="book-admin-new-group-name" class="input-field" style="margin-bottom:0;" placeholder="e.g. Major Prophets">
+            </div>
+          </div>
+          <div id="book-admin-shelf-group-note" style="display:none; color:var(--text-muted); font-size:12px; margin:-10px 0 14px; font-family:'Plus Jakarta Sans', sans-serif;"></div>
+          <div class="book-admin-field-row">
+            <div style="flex: 1 1 120px;">
+              <label id="book-admin-color-label">Spine color</label>
+              <input type="color" id="book-admin-color" class="input-field" style="margin-bottom:0; padding:4px; height:40px;">
+            </div>
+            <div style="flex: 1 1 120px;">
+              <label id="book-admin-height-label">Spine height (px)</label>
+              <input type="number" id="book-admin-height" class="input-field" style="margin-bottom:0;" min="100" max="400">
+            </div>
+            <div style="flex: 1 1 160px; display:flex; align-items:center; gap:8px; padding-bottom:10px;">
+              <input type="checkbox" id="book-admin-live" style="width:18px; height:18px; margin:0;">
+              <label style="margin:0;" for="book-admin-live">Live (visible &amp; selectable on the shelf)</label>
+            </div>
+          </div>
+
+          <div style="margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <h3 style="font-family: var(--font-heading); font-size:20px; margin:0; color:var(--text-main);">Presenters / Authors</h3>
+              <button type="button" class="page-btn" onclick="addBookAdminPresenterRow()">+ Add Presenter</button>
+            </div>
+            <div style="color:var(--text-muted); font-size:12px; margin-bottom:8px; font-family:'Plus Jakarta Sans', sans-serif;">Add more than one and users will be able to click each one to filter the sessions/articles below by who presented them.</div>
+            <div id="book-admin-presenters-list"></div>
+          </div>
+
+          <div style="margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <h3 style="font-family: var(--font-heading); font-size:20px; margin:0; color:var(--text-main);">Sessions / Articles</h3>
+              <button type="button" class="page-btn" onclick="addBookAdminSessionRow()">+ Add Session</button>
+            </div>
+            <div id="book-admin-sessions-list"></div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
+            <button type="button" class="page-btn" id="book-admin-delete-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fca5a5;" onclick="deleteBookAdminContent()">Delete this book's content</button>
+            <button type="button" class="btn" style="width:auto;" onclick="saveBookAdminForm()">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOUNDATIONS ADMIN EDITOR (opened from "Manage Content" in the Foundations
+           sub-tab; admins only). Saves straight to the foundations_content table —
+           see foundations_migration.sql. -->
+      <div id="foundations-admin-tab" class="tab-content">
+        <div class="cord-view-header">
+          <button class="cord-view-back-btn" onclick="closeFoundationsAdminView()" title="Back">&larr;</button>
+          <h2 class="cord-view-title">Manage Content</h2>
+        </div>
+
+        <div class="book-admin-field-row">
+          <div style="flex: 1 1 220px;">
+            <label>Class</label>
+            <select id="foundations-admin-select" class="input-field" style="margin-bottom:0;" onchange="handleFoundationsAdminSelectChange()"></select>
+          </div>
+        </div>
+
+        <div id="foundations-admin-form" style="display:none;">
+          <div class="book-admin-field-row">
+            <div style="flex: 1 1 220px;">
+              <label>Title</label>
+              <input type="text" id="foundations-admin-title" class="input-field" style="margin-bottom:0;" placeholder="e.g. Foundations of Bible Prophecy">
+            </div>
+            <div style="flex: 1 1 220px;">
+              <label>Category</label>
+              <input type="text" id="foundations-admin-category" class="input-field" style="margin-bottom:0;" list="foundations-admin-category-list" placeholder="e.g. Christian Living">
+              <datalist id="foundations-admin-category-list"></datalist>
+            </div>
+          </div>
+
+          <div class="book-admin-field-row">
+            <div style="flex: 1 1 100%;">
+              <label>Choose an existing presenter</label>
+              <select class="input-field study-presenter-picker" style="margin-bottom:0;" onchange="handleFoundationsAdminPresenterPick(this.value)">
+                <option value="">Choose an existing presenter…</option>
+              </select>
+              <div class="study-presenter-picker-error-note" style="display:none; color:var(--accent-coral); font-size:12px; margin-top:4px;"></div>
+            </div>
+          </div>
+          <div class="book-admin-field-row">
+            <div style="flex: 1 1 220px;">
+              <label>Presenter name</label>
+              <input type="text" id="foundations-admin-presenter" class="input-field" style="margin-bottom:0;" placeholder="e.g. Mr. Gerald Weston">
+            </div>
+            <div style="flex: 1 1 220px;">
+              <label>Thumbnail image URL</label>
+              <input type="text" id="foundations-admin-thumbnail" class="input-field" style="margin-bottom:0;" placeholder="https://…">
+            </div>
+            <div style="flex: 1 1 220px;">
+              <label>Presenter photo URL (or pick a presenter above)</label>
+              <input type="text" id="foundations-admin-presenter-photo" class="input-field" style="margin-bottom:0;" placeholder="https://…">
+            </div>
+          </div>
+          <div class="book-admin-field-row">
+            <div style="flex: 1 1 100px;">
+              <label>Sort order</label>
+              <input type="number" id="foundations-admin-sort-order" class="input-field" style="margin-bottom:0;" value="0">
+            </div>
+            <div style="flex: 1 1 140px; display:flex; align-items:center; gap:8px; padding-bottom:10px;">
+              <input type="checkbox" id="foundations-admin-is-new" style="width:18px; height:18px; margin:0;">
+              <label style="margin:0;" for="foundations-admin-is-new">Show "New" badge</label>
+            </div>
+            <div style="flex: 1 1 160px; display:flex; align-items:center; gap:8px; padding-bottom:10px;">
+              <input type="checkbox" id="foundations-admin-live" style="width:18px; height:18px; margin:0;" checked>
+              <label style="margin:0;" for="foundations-admin-live">Live (visible in Core-D)</label>
+            </div>
+          </div>
+
+          <div class="book-admin-field-row">
+            <div style="flex: 1 1 100%;">
+              <label>Hero Video <span style="font-weight:400; color:var(--text-muted);">(plays when a learner taps ▶ Play on this class's page — rebuilds after you add/remove a video below)</span></label>
+              <select id="foundations-admin-hero-video" class="input-field" style="margin-bottom:0;" onchange="updateFoundationsAdminHeroVideoValue(this.value)">
+                <option value="">Auto — first video in the class</option>
+              </select>
+            </div>
+          </div>
+
+
+          <div class="book-admin-field-row" style="align-items:center; justify-content:space-between;">
+            <label style="margin:0;">Sessions</label>
+            <button type="button" class="page-btn" onclick="addFoundationsAdminSessionRow()">+ Add Session</button>
+          </div>
+          <div id="foundations-admin-sessions-list"></div>
+
+          <div class="book-admin-field-row" style="margin-top:10px; align-items:center; justify-content:space-between;">
+            <label style="margin:0;">May We Suggest? <span style="font-weight:400; color:var(--text-muted);">(up to 3 related classes shown at the end of this one)</span></label>
+            <span id="foundations-admin-suggestions-count" style="color:var(--text-muted); font-size:12.5px;"></span>
+          </div>
+          <div id="foundations-admin-suggestions-list" style="border:1px solid var(--border-color); border-radius:var(--border-radius); padding:10px 12px; max-height:220px; overflow-y:auto;"></div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
+            <button type="button" class="page-btn" id="foundations-admin-delete-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fca5a5;" onclick="deleteFoundationsAdminItem()">Delete this class</button>
+            <button type="button" class="btn" style="width:auto;" onclick="saveFoundationsAdminForm()">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TW BIBLE COURSE ADMIN EDITOR (opened from "Manage Content" in the TW Bible
+           Course sub-tab; admins only). Saves straight to the tw_bible_course_modules
+           table — see the SQL comment above loadTWBibleCourseFromDB in this file. -->
+      <div id="tw-course-admin-tab" class="tab-content">
+        <div class="cord-view-header">
+          <button class="cord-view-back-btn" onclick="closeTWCourseAdminView()" title="Back">&larr;</button>
+          <h2 class="cord-view-title">Manage Content</h2>
+        </div>
+
+        <div class="book-admin-item-card" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div style="color:var(--text-muted); font-size:12px; flex:1 1 220px;">One-time: copies the built-in course modules (whatever is currently hard-coded in the app) into the database so they show up here and can be edited. Only useful while nothing has been saved to the database yet.</div>
+          <button type="button" class="page-btn" style="white-space:nowrap;" onclick="importHardcodedTWCourseToDB()">Import Existing Course Content</button>
+        </div>
+
+        <div class="book-admin-field-row">
+          <div style="flex: 1 1 220px;">
+            <label>Module</label>
+            <select id="tw-course-admin-select" class="input-field" style="margin-bottom:0;" onchange="handleTWCourseAdminSelectChange()"></select>
+          </div>
+        </div>
+
+        <div id="tw-course-admin-form" style="display:none;">
+          <div class="book-admin-field-row">
+            <div style="flex: 1 1 220px;">
+              <label>Module Title</label>
+              <input type="text" id="tw-course-admin-title" class="input-field" style="margin-bottom:0;" placeholder="e.g. Module 1: Lessons 1-4">
+            </div>
+            <div style="flex: 1 1 100px;">
+              <label>Order</label>
+              <input type="number" id="tw-course-admin-order" class="input-field" style="margin-bottom:0;" value="0">
+            </div>
+          </div>
+
+          <div class="book-admin-field-row">
+            <div style="flex: 1 1 220px;">
+              <label>Presenter name <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
+              <input type="text" id="tw-course-admin-presenter" class="input-field" style="margin-bottom:0;" placeholder="e.g. Mr. Gerald Weston">
+            </div>
+            <div style="flex: 1 1 220px;">
+              <label>Presenter photo URL <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
+              <input type="text" id="tw-course-admin-presenter-photo" class="input-field" style="margin-bottom:0;" placeholder="https://…">
+            </div>
+            <div style="flex: 1 1 220px;">
+              <label>Thumbnail / hero image <span style="font-weight:400; color:var(--text-muted);">(optional — a URL, or upload your own image)</span></label>
+              <input type="text" id="tw-course-admin-thumbnail" class="input-field" style="margin-bottom:0;" placeholder="https://…">
+              <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+                <button type="button" class="page-btn" onclick="document.getElementById('tw-course-admin-thumbnail-upload').click()">Upload Image</button>
+                <input type="file" id="tw-course-admin-thumbnail-upload" accept="image/*" style="display:none;" onchange="handleTWCourseAdminThumbnailUpload(event)">
+                <span id="tw-course-admin-thumbnail-upload-status" style="font-size:11.5px;"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="book-admin-field-row">
+            <div style="flex: 1 1 100%;">
+              <label>Hero Video <span style="font-weight:400; color:var(--text-muted);">(plays when a learner taps ▶ Play on this module's page — rebuilds after you add/remove a video below)</span></label>
+              <select id="tw-course-admin-hero-video" class="input-field" style="margin-bottom:0;" onchange="updateTWCourseAdminHeroVideoValue(this.value)">
+                <option value="">Auto — first video in the module</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="book-admin-field-row" style="align-items:center; justify-content:space-between;">
+            <label style="margin:0;">Lessons</label>
+            <button type="button" class="page-btn" onclick="addTWCourseAdminLessonRow()">+ Add Lesson</button>
+          </div>
+          <div id="tw-course-admin-lessons-list"></div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
+            <button type="button" class="page-btn" id="tw-course-admin-delete-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fca5a5;" onclick="deleteTWCourseAdminModule()">Delete this module</button>
+            <button type="button" class="btn" style="width:auto;" onclick="saveTWCourseAdminModule()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+/*__APP_BUNDLE__*/  </script>
+</body>
+</html>
