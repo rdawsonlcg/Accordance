@@ -68,6 +68,40 @@ double-click open, upload, or share — nothing changes about how you use it.
   referenced them inside onclick-attribute HTML strings (which resolve
   through the global scope at click time, not through a module's own
   imports) — removed as part of this pass.
+- **`shared/churchResources.js`** — Church Resources: pastoral/study
+  resources attached to one or more Bible verses (shown inline in the main
+  Bible reading view) or browsed by book under "Line Upon Line." By far the
+  most fragmented extraction of the seven — this feature isn't one or two
+  big movable chunks, it's woven into 7 separate, non-contiguous regions of
+  `app.js`, several interleaved with entirely unrelated code (Reading Plans,
+  My Margins, core app bootstrap). The "add a new resource" form is actually
+  embedded as literal inline HTML inside the main verse-row template, not a
+  separate function — there was nothing to extract there, so that markup
+  stays exactly where it is in `app.js`; only the genuinely separable
+  logic/state moved. Depends on `shared/videoPlayer.js` (thumbnail/URL
+  helpers, `openFsvPlayer`) and on `currentBibleVerses`/`currentUser`/
+  `BIBLE_STUDIES_BOOK_ORDER`/a couple of small functions from `app.js`, with
+  the same circular dependency back the other way.
+  **Two real bugs came out of this pass**, both worth calling out:
+  1. This module's own reference-matching regex had the exact same
+     eager-top-level-IIFE-on-a-circular-import bug found in `shared/coreD.js`
+     — fixed proactively, the same way, before it could cause a failure.
+  2. A genuinely serious one, unrelated to this extraction itself: while
+     testing this module's database calls, a gap was found in how earlier
+     extractions were dependency-checked — a call like `someTable.insert(...)`
+     was being seen as just a generic `.insert(` method call rather than a
+     reference to an external `someTable` object, so a missing import of the
+     *object* itself could slip through undetected. Rechecking every module
+     against this specific pattern turned up a real instance already
+     shipped: `shared/twBibleCourse.js` was missing its import of
+     `twCourseProgressTable`, meaning **completing a TW Bible Course lesson's
+     Knowledge Check has been silently failing to save progress** since that
+     extraction — the completion call was throwing a `ReferenceError` before
+     it could reach the database. Both this and `churchResources.js`'s own
+     missing `churchResourcesTable` import are now fixed and confirmed with
+     a test that actually reaches the database call, not just one that
+     avoids throwing via an early-return path (which is what let the TW bug
+     go unnoticed the first time).
 
 - **`shared/coreD.js`** — the Core-D study feature: class/session data,
   category filters and search, the learner-facing list and detail panel
@@ -93,6 +127,59 @@ double-click open, upload, or share — nothing changes about how you use it.
   only an automated test that actually exercised it (not just a successful
   build) caught it. Fixed by computing the regex lazily, on first real use,
   instead.
+- **`shared/cords.js`** — Cords, the direct/group messaging system: request/
+  accept, the cord list and pending invites, the message thread, avatar
+  generation, and the one Cords-specific piece of the app-wide Share Sheet
+  (sending a shared link straight into a Cord). The Share Sheet itself
+  (`openShareSheet`, copy-link, device-share) stayed in `app.js` — it's
+  generic, used by every `shareX` function across every already-extracted
+  module, not something exclusive to Cords; only its Cords-specific piece
+  moved. `lastMainTabId` and `closeMyMarginsView` stayed too, for the same
+  reason — genuinely shared navigation state that just happened to sit next
+  to Cords' own code.
+  Depends on `core/db.js` (`cordMessagesTable`, `cordMembersTable`,
+  `profilesTable`) and `supabaseClient` directly for one RPC call that
+  doesn't go through a table accessor — referenced as a pre-existing global
+  the same way `core/db.js` itself does, and specifically confirmed
+  (not just assumed) to resolve correctly with an end-to-end test using the
+  real built HTML file, both script tags included.
+  Two things worth calling out from this pass:
+  1. **A real bug, caught before shipping**: `app.js`'s `switchTab()` used to
+     clear Cords' background poll timer with a direct assignment
+     (`cordPollTimer = null`), which isn't legal once that variable becomes
+     an imported binding. Fixed with a `stopCordPollTimer()` setter,
+     confirmed with a test that actually sets a timer id and checks it gets
+     cleared, not just that the call doesn't throw.
+  2. **A methodology improvement that already paid for itself**: after the
+     `churchResourcesTable`/`twCourseProgressTable` incident (see
+     `shared/churchResources.js` above), every module was rechecked for the
+     same class of miss — but the recheck script itself had a gap, since it
+     only matched a table accessor's `.method()` call on the *same line*.
+     Multi-line chains (`cordMembersTable` on one line, `.select(...)` on
+     the next) slipped through the first pass. Broadening the check to allow
+     a line break between the two confirmed `shared/cords.js` itself needed
+     `cordMembersTable` too — caught before it ever shipped, this time.
+- **`shared/records.js`** — Records/achievement badges: the admin-managed
+  badge catalog, which of them a user has earned, the five trigger-check
+  functions that award them (reading plan completed, margin notes count,
+  book resources clicked, TW module/course completed), the learner-facing
+  Records grid, and the badge-creation admin form. Structurally the cleanest
+  extraction of the nine — one single contiguous ~1,000-line block, no
+  interleaved unrelated code — but reaches into `shared/byTheBook.js`
+  (`getBibleStudyBookConfig`, `getSessionType`) and `shared/twBibleCourse.js`
+  (`twBibleCourseData`, `markTWLessonComplete`) to check its triggers, both
+  re-pointed here from `app.js` the same way earlier re-pointings went.
+  `markBookResourceClicked` was also imported by `shared/byTheBook.js` from
+  `app.js` before this move, but — like `shared/audioPlayer.js`'s controls —
+  only ever referenced inside onclick-attribute HTML strings there, never
+  called directly, so that import was simply removed rather than re-pointed.
+  **A real bug, caught before shipping**: `app.js`'s logout cleanup used to
+  clear the user's earned-badges cache with a direct assignment
+  (`userRecordsMap = {}`), the same illegal-once-imported pattern found
+  twice before (`shared/byTheBook.js`'s filters, `shared/cords.js`'s poll
+  timer). Fixed with a `clearUserRecordsMap()` setter, confirmed by
+  populating the cache, clearing it, and checking it's actually empty
+  afterward — not just that the call doesn't throw.
 - **`app.js`** — everything else, for now. It `import`s from both files
   above. As more pieces get modularized, this file will keep shrinking and
   new files will appear alongside `core/` and `shared/`.
@@ -156,8 +243,15 @@ whole point of modularizing in the first place.
 
 ## What's next
 
-Six pieces down (`core/db.js`, `shared/adminUtils.js`, `shared/videoPlayer.js`, `shared/byTheBook.js`, `shared/twBibleCourse.js`, `shared/coreD.js`, `shared/audioPlayer.js`) — seven, counting the audio player. All three study features and every widely-shared utility flagged along the way are now their own modules. Everything else the app does (auth/session handling, tab navigation, the Bible reading view and search, Records/badges, reading plans, Cords, Settings, and Church Resources) is still in `app.js`, with no committed plan to split it further.
-The natural next candidates, following the same one-piece-at-a-time approach as the rest of
-this cleanup: each of the three study features (Core-D, TW Bible Course, By
-the Book) as their own modules — they're the biggest remaining chunks of
-`app.js`, and each one is fairly self-contained already.
+Ten pieces down (`core/db.js`, `shared/adminUtils.js`, `shared/videoPlayer.js`,
+`shared/byTheBook.js`, `shared/twBibleCourse.js`, `shared/coreD.js`,
+`shared/audioPlayer.js`, `shared/churchResources.js`, `shared/cords.js`,
+`shared/records.js`). All three study features, every widely-shared utility
+flagged along the way, Church Resources, Cords, and Records/badges are now
+their own modules. Everything else the app does (auth/session handling, tab
+navigation, the core Bible reading view and search, reading plans, and
+Settings) is still in `app.js`, with no committed plan to split it further.
+No standing guess about what's "probably self-contained" has survived
+contact with the actual code yet, so none is offered here either — the
+honest answer is that finding out requires doing the same careful mapping
+this file's whole history is made of, not assuming it from the outside.

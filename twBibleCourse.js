@@ -5,12 +5,14 @@
 // flows), and the full admin form for editing a module's content.
 //
 // NOT included here, on purpose: checkTWModuleCompletionBadges/
-// checkTWCourseCompletionBadges (the badge-award checks) stayed in app.js
-// with the rest of the badge system, same reasoning as isBookFullyClicked
-// staying out of shared/byTheBook.js — this module just calls them.
-// normalizeTWLessonQuizzes also stayed in app.js: despite its name, it's
-// used by Core-D's content loader too (neither module is exclusively "home"
-// for a validator both need).
+// checkTWCourseCompletionBadges (the badge-award checks) now live in
+// shared/records.js with the rest of the badge system, same reasoning as
+// isBookFullyClicked staying out of shared/byTheBook.js — this module just
+// calls them. (They used to be imported from app.js, back when the badge
+// system still lived there — re-pointed once shared/records.js existed.)
+// normalizeTWLessonQuizzes stayed in app.js: despite its name, it's used by
+// Core-D's content loader too (neither module is exclusively "home" for a
+// validator both need).
 //
 // `supabaseClient` is referenced directly (for the module-thumbnail upload)
 // as a pre-existing global, same as core/db.js — see that file's header for
@@ -36,7 +38,7 @@
 // import points at this file for those two names — see its own header.
 // ============================================================================
 
-import { createTableAccessor, fetchAllRows } from '../core/db.js';
+import { createTableAccessor, fetchAllRows, twCourseProgressTable } from '../core/db.js';
 import {
   applyContentFormat, handleContentPaste, handleTableUpload, insertTableAtCursor,
   makeAdminDragReorder, makeAdminQuizArrayController, renderAdminQuizEditorBlock
@@ -50,9 +52,9 @@ import {
   renderFoundationsContentHtml, sizeFoundationsHeroVideoBg,
   FOUNDATIONS_VIDEO_ICON_SVG, FOUNDATIONS_AUDIO_ICON_SVG
 } from './coreD.js';
+import { checkTWCourseCompletionBadges, checkTWModuleCompletionBadges } from './records.js';
 import {
-  escapeHtml, fixMojibakeText, currentUser, checkTWCourseCompletionBadges,
-  checkTWModuleCompletionBadges, normalizeTWLessonQuizzes,
+  escapeHtml, fixMojibakeText, currentUser, normalizeTWLessonQuizzes,
   switchStudySubTab, switchTab, updateStudyNotificationBadges
 } from '../app.js';
 
@@ -292,7 +294,7 @@ import {
 
     // Only a Subscriber sees the "next step" invitation on finishing the course —
     // Member/Prospective Member/Admin have presumably already taken that step.
-    export function maybeShowTWCourseCompletionModal() {
+export function maybeShowTWCourseCompletionModal() {
       const role = (currentUser && currentUser.role) || 'subscriber';
       if (role !== 'subscriber') return;
       const modal = document.getElementById('tw-course-completion-modal');
