@@ -2137,6 +2137,7 @@ var __App = (() => {
     applyTWCourseAdminFormat: () => applyTWCourseAdminFormat,
     autoSaveUserNote: () => autoSaveUserNote,
     backToCordList: () => backToCordList,
+    cachedScheduleDays: () => cachedScheduleDays,
     cancelEditChurchResource: () => cancelEditChurchResource,
     cancelLineUponLineAddForm: () => cancelLineUponLineAddForm,
     changeCalendarMonth: () => changeCalendarMonth,
@@ -2159,6 +2160,9 @@ var __App = (() => {
     confirmRestartPlan: () => confirmRestartPlan,
     continueAfterFsvKnowledgeCheck: () => continueAfterFsvKnowledgeCheck,
     currentBibleVerses: () => currentBibleVerses2,
+    currentPlanStartDate: () => currentPlanStartDate,
+    currentPlanSubTab: () => currentPlanSubTab,
+    currentPlanViewDayNumber: () => currentPlanViewDayNumber,
     currentUser: () => currentUser,
     deleteBookAdminContent: () => deleteBookAdminContent,
     deleteBookAdminShelfGroup: () => deleteBookAdminShelfGroup,
@@ -2285,6 +2289,7 @@ var __App = (() => {
     selectStudyView: () => selectStudyView,
     sendCordThreadMessage: () => sendCordThreadMessage,
     sendShareToCord: () => sendShareToCord,
+    setCurrentPlanViewDayNumber: () => setCurrentPlanViewDayNumber,
     setHeaderIconSelected: () => setHeaderIconSelected,
     shareBookSession: () => shareBookSession,
     shareFoundationsClass: () => shareFoundationsClass,
@@ -2437,57 +2442,6 @@ var __App = (() => {
   var userReadingProgressTable = createTableAccessor("user_reading_progress");
   var userResourceClicksTable = createTableAccessor("user_resource_clicks");
   var profilesTable = createTableAccessor("profiles");
-
-  // src/shared/audioPlayer.js
-  function togglePlay(i) {
-    const audio = document.getElementById(`audio-player-${i}`);
-    const btn = document.getElementById(`play-btn-${i}`);
-    if (audio.paused) {
-      audio.play();
-      btn.textContent = "\u275A\u275A";
-    } else {
-      audio.pause();
-      btn.textContent = "\u25B6";
-    }
-  }
-  function resetPlayButton(i) {
-    const btn = document.getElementById(`play-btn-${i}`);
-    if (btn) btn.textContent = "\u25B6";
-  }
-  function skipAudio(elementId, seconds) {
-    const audio = document.getElementById(elementId);
-    if (audio) {
-      audio.currentTime = Math.min(Math.max(audio.currentTime + seconds, 0), audio.duration);
-    }
-  }
-  function updateProgress(i) {
-    const audio = document.getElementById(`audio-player-${i}`);
-    const progress = document.getElementById(`progress-${i}`);
-    const timeDisplay = document.getElementById(`time-${i}`);
-    if (audio && audio.duration) {
-      progress.value = audio.currentTime / audio.duration * 100;
-      timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
-    }
-  }
-  function seekAudio(i, value) {
-    const audio = document.getElementById(`audio-player-${i}`);
-    if (audio && audio.duration) {
-      audio.currentTime = value / 100 * audio.duration;
-    }
-  }
-  function initAudio(i) {
-    const audio = document.getElementById(`audio-player-${i}`);
-    const timeDisplay = document.getElementById(`time-${i}`);
-    if (audio && audio.duration) {
-      timeDisplay.textContent = `0:00 / ${formatTime(audio.duration)}`;
-    }
-  }
-  function formatTime(seconds) {
-    if (isNaN(seconds)) return "0:00";
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${s < 10 ? "0" : ""}${s}`;
-  }
 
   // src/shared/adminUtils.js
   function makeAdminDragReorder(getState, renderFn, containerId) {
@@ -6778,19 +6732,19 @@ ${titlesToImport.join(", ")}`)) return;
     if (!videoId) return null;
     return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&rel=0&modestbranding=1&playsinline=1&disablekb=1&iv_load_policy=3`;
   }
-  var activeMediaController = null;
+  var activeMediaController2 = null;
   var miniPlayerWatcherId = null;
   function getNativeMediaTitle(el) {
     return el.getAttribute("data-media-title") || "Now Playing";
   }
   function getMiniPlayerElement() {
-    return activeMediaController ? activeMediaController.element : null;
+    return activeMediaController2 ? activeMediaController2.element : null;
   }
   function handleMediaStarted(controller) {
-    if (activeMediaController && activeMediaController.element !== controller.element) {
-      pauseMediaController(activeMediaController);
+    if (activeMediaController2 && activeMediaController2.element !== controller.element) {
+      pauseMediaController(activeMediaController2);
     }
-    activeMediaController = controller;
+    activeMediaController2 = controller;
     const titleEl = document.getElementById("media-mini-player-title");
     if (titleEl) titleEl.textContent = controller.title || "Now Playing";
     setupMiniPlayerMarquee();
@@ -6813,7 +6767,7 @@ ${titlesToImport.join(", ")}`)) return;
     }
   }
   function clearActiveMedia() {
-    activeMediaController = null;
+    activeMediaController2 = null;
     stopMiniPlayerVisibilityWatcher();
     const bar = document.getElementById("media-mini-player");
     if (bar) bar.classList.remove("visible");
@@ -6850,7 +6804,7 @@ ${titlesToImport.join(", ")}`)) return;
   function updateMiniPlayerVisibility() {
     const bar = document.getElementById("media-mini-player");
     if (!bar) return;
-    if (!activeMediaController) {
+    if (!activeMediaController2) {
       bar.classList.remove("visible");
       return;
     }
@@ -6872,11 +6826,11 @@ ${titlesToImport.join(", ")}`)) return;
   function startMiniPlayerVisibilityWatcher() {
     if (miniPlayerWatcherId) return;
     miniPlayerWatcherId = setInterval(() => {
-      if (!activeMediaController) {
+      if (!activeMediaController2) {
         stopMiniPlayerVisibilityWatcher();
         return;
       }
-      const el = activeMediaController.element;
+      const el = activeMediaController2.element;
       if (!el || !document.body.contains(el)) {
         clearActiveMedia();
         return;
@@ -6891,29 +6845,29 @@ ${titlesToImport.join(", ")}`)) return;
     }
   }
   function toggleMiniPlayerPlayback() {
-    if (!activeMediaController) return;
-    if (activeMediaController.kind === "tts") {
-      if (activeMediaController.isPaused()) activeMediaController.play();
-      else activeMediaController.pause();
+    if (!activeMediaController2) return;
+    if (activeMediaController2.kind === "tts") {
+      if (activeMediaController2.isPaused()) activeMediaController2.play();
+      else activeMediaController2.pause();
       return;
     }
-    const el = activeMediaController.element;
+    const el = activeMediaController2.element;
     if (el.paused) el.play();
     else el.pause();
   }
   function stopMiniPlayerMedia() {
-    if (!activeMediaController) return;
-    if (activeMediaController.kind === "tts") {
+    if (!activeMediaController2) return;
+    if (activeMediaController2.kind === "tts") {
       try {
-        activeMediaController.stop();
+        activeMediaController2.stop();
       } catch (e) {
       }
       clearActiveMedia();
       return;
     }
     try {
-      activeMediaController.element.pause();
-      activeMediaController.element.currentTime = 0;
+      activeMediaController2.element.pause();
+      activeMediaController2.element.currentTime = 0;
     } catch (e) {
     }
     clearActiveMedia();
@@ -6926,13 +6880,13 @@ ${titlesToImport.join(", ")}`)) return;
   }, true);
   document.addEventListener("pause", function(e) {
     const el = e.target;
-    if (activeMediaController && activeMediaController.kind === "native" && activeMediaController.element === el) {
+    if (activeMediaController2 && activeMediaController2.kind === "native" && activeMediaController2.element === el) {
       updateMiniPlayerPlayPauseIcon(false);
     }
   }, true);
   document.addEventListener("ended", function(e) {
     const el = e.target;
-    if (activeMediaController && activeMediaController.kind === "native" && activeMediaController.element === el) {
+    if (activeMediaController2 && activeMediaController2.kind === "native" && activeMediaController2.element === el) {
       clearActiveMedia();
     }
   }, true);
@@ -6966,7 +6920,7 @@ ${titlesToImport.join(", ")}`)) return;
   function openFsvPlayer(videos, startIndex, contextTitle, completionContext) {
     const list = (videos || []).filter((v) => v && v.url);
     if (list.length === 0) return;
-    if (activeMediaController) stopMiniPlayerMedia();
+    if (activeMediaController2) stopMiniPlayerMedia();
     fsvState = {
       videos: list,
       index: Math.min(Math.max(startIndex || 0, 0), list.length - 1),
@@ -7358,6 +7312,348 @@ ${titlesToImport.join(", ")}`)) return;
       fsvState.player.seekTo(0, true);
       fsvState.player.playVideo();
     }
+  }
+
+  // src/shared/dailyReadingTts.js
+  var dailyReadingTtsActive = false;
+  var dailyReadingTtsPaused = false;
+  var dailyReadingTtsSessionToken = 0;
+  var dailyReadingContinueCountdownInterval = null;
+  var dailyReadingContinueTimeoutHandle = null;
+  var dailyReadingFullText = "";
+  var dailyReadingSpokenOffset = 0;
+  var dailyReadingSegmentStartTime = 0;
+  var dailyReadingElapsedMs = 0;
+  var TTS_ESTIMATED_CHARS_PER_SECOND = 13;
+  var cachedTtsVoices = [];
+  function refreshTtsVoiceCache() {
+    if (!window.speechSynthesis) return;
+    const v = window.speechSynthesis.getVoices();
+    if (v && v.length) cachedTtsVoices = v;
+  }
+  refreshTtsVoiceCache();
+  if (window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      refreshTtsVoiceCache();
+      warmUpDailyReadingTtsVoice();
+    };
+  }
+  var dailyReadingTtsWarmedUp = false;
+  function warmUpDailyReadingTtsVoice() {
+    if (dailyReadingTtsWarmedUp) return;
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    const voice = pickDailyReadingTtsVoice();
+    if (!voice) return;
+    dailyReadingTtsWarmedUp = true;
+    const warmup = new SpeechSynthesisUtterance(".");
+    warmup.voice = voice;
+    warmup.volume = 0;
+    warmup.onerror = () => {
+    };
+    try {
+      synth.speak(warmup);
+    } catch (e) {
+    }
+  }
+  warmUpDailyReadingTtsVoice();
+  function pickDailyReadingTtsVoice() {
+    const synth = window.speechSynthesis;
+    if (!synth) return null;
+    let voices = synth.getVoices() || [];
+    if (!voices.length) voices = cachedTtsVoices;
+    if (!voices.length) return null;
+    return voices.find((v) => /google uk english male/i.test(v.name)) || voices.find((v) => (v.lang || "").toLowerCase() === "en-gb" && /male/i.test(v.name)) || voices.find((v) => (v.lang || "").toLowerCase() === "en-gb") || null;
+  }
+  function updateDailyReadingTtsButton() {
+    const btn = document.getElementById("daily-reading-tts-btn");
+    if (!btn) return;
+    const isSpeaking = dailyReadingTtsActive && !dailyReadingTtsPaused;
+    btn.classList.toggle("active", isSpeaking);
+    btn.title = isSpeaking ? "Pause reading aloud" : dailyReadingTtsActive ? "Resume reading aloud" : "Play today's reading aloud";
+    btn.innerHTML = isSpeaking ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>' : '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>';
+    if (typeof activeMediaController !== "undefined" && activeMediaController && activeMediaController.kind === "tts") {
+      updateMiniPlayerPlayPauseIcon(isSpeaking);
+    }
+    const rewindBtn = document.getElementById("daily-reading-rewind-btn");
+    const forwardBtn = document.getElementById("daily-reading-forward-btn");
+    if (rewindBtn) rewindBtn.style.display = dailyReadingTtsActive ? "flex" : "none";
+    if (forwardBtn) forwardBtn.style.display = dailyReadingTtsActive ? "flex" : "none";
+  }
+  function registerDailyReadingMediaController(dayNumber) {
+    const btn = document.getElementById("daily-reading-tts-btn");
+    if (!btn) return;
+    handleMediaStarted({
+      kind: "tts",
+      element: btn,
+      // used only for the generic on-screen-visibility check
+      title: `Day ${dayNumber} Reading`,
+      isPaused: () => dailyReadingTtsPaused,
+      play: () => resumeDailyReadingTts(),
+      pause: () => pauseDailyReadingTts(),
+      stop: () => stopDailyReadingTts()
+    });
+  }
+  function toggleDailyReadingTts() {
+    if (dailyReadingTtsActive) {
+      if (dailyReadingTtsPaused) resumeDailyReadingTts();
+      else pauseDailyReadingTts();
+      return;
+    }
+    if (!window.speechSynthesis) {
+      alert("Text-to-speech is not supported in this browser.");
+      return;
+    }
+    if (!ensureLoggedInFor("Sign in to track your reading progress.", () => toggleDailyReadingTts())) return;
+    if (currentPlanSubTab !== "reading") switchPlanSubTab("reading");
+    dailyReadingTtsSessionToken++;
+    runDailyReadingTtsCycle();
+  }
+  function pauseDailyReadingTts() {
+    if (!dailyReadingTtsActive || dailyReadingTtsPaused || !window.speechSynthesis) return;
+    window.speechSynthesis.pause();
+    dailyReadingTtsPaused = true;
+    dailyReadingElapsedMs += Date.now() - dailyReadingSegmentStartTime;
+    updateDailyReadingTtsButton();
+  }
+  function resumeDailyReadingTts() {
+    if (!dailyReadingTtsActive || !dailyReadingTtsPaused || !window.speechSynthesis) return;
+    window.speechSynthesis.resume();
+    dailyReadingTtsPaused = false;
+    dailyReadingSegmentStartTime = Date.now();
+    updateDailyReadingTtsButton();
+    registerDailyReadingMediaController(currentPlanViewDayNumber);
+  }
+  function runDailyReadingTtsCycle() {
+    const mySessionToken = dailyReadingTtsSessionToken;
+    const container = document.getElementById("daily-reading-passage-text");
+    let text = "";
+    if (container) {
+      const clone = container.cloneNode(true);
+      clone.querySelectorAll("sup").forEach((el) => el.remove());
+      text = clone.textContent.replace(/\s+/g, " ").trim();
+    }
+    if (!container || !text) {
+      stopDailyReadingTts();
+      return;
+    }
+    dailyReadingFullText = text;
+    registerDailyReadingMediaController(currentPlanViewDayNumber);
+    speakDailyReadingPassage(text, mySessionToken, false, 0);
+  }
+  var TTS_STARTUP_GRACE_MS = 1500;
+  var dailyReadingCurrentUtterance = null;
+  function speakDailyReadingPassage(text, mySessionToken, useLocalFallbackVoice, startOffset) {
+    const synth = window.speechSynthesis;
+    if (dailyReadingCurrentUtterance) {
+      dailyReadingCurrentUtterance.onstart = null;
+      dailyReadingCurrentUtterance.onboundary = null;
+      dailyReadingCurrentUtterance.onend = null;
+      dailyReadingCurrentUtterance.onerror = null;
+    }
+    const utter = new SpeechSynthesisUtterance(text);
+    dailyReadingCurrentUtterance = utter;
+    const voice = useLocalFallbackVoice ? pickLocalFallbackTtsVoice() : pickDailyReadingTtsVoice();
+    if (voice) utter.voice = voice;
+    utter.rate = 0.9;
+    utter.pitch = 0.5;
+    dailyReadingSpokenOffset = startOffset;
+    dailyReadingSegmentStartTime = Date.now();
+    dailyReadingElapsedMs = 0;
+    let started = false;
+    utter.onstart = () => {
+      started = true;
+    };
+    utter.onboundary = () => {
+      started = true;
+    };
+    utter.onend = () => {
+      if (mySessionToken !== dailyReadingTtsSessionToken) return;
+      handleDailyReadingFinishedNaturally(mySessionToken);
+    };
+    utter.onerror = () => {
+      if (mySessionToken !== dailyReadingTtsSessionToken) return;
+      stopDailyReadingTts();
+    };
+    if (synth.paused) synth.resume();
+    synth.cancel();
+    setTimeout(() => {
+      if (dailyReadingCurrentUtterance !== utter) return;
+      synth.speak(utter);
+    }, 50);
+    dailyReadingTtsActive = true;
+    dailyReadingTtsPaused = false;
+    updateDailyReadingTtsButton();
+    if (!useLocalFallbackVoice) {
+      setTimeout(() => {
+        if (mySessionToken !== dailyReadingTtsSessionToken) return;
+        if (started) return;
+        speakDailyReadingPassage(text, mySessionToken, true, startOffset);
+      }, TTS_STARTUP_GRACE_MS);
+    }
+  }
+  function pickLocalFallbackTtsVoice() {
+    const synth = window.speechSynthesis;
+    if (!synth) return null;
+    let voices = synth.getVoices() || [];
+    if (!voices.length) voices = cachedTtsVoices;
+    if (!voices.length) return null;
+    return voices.find((v) => v.localService && /^en/i.test(v.lang || "")) || voices.find((v) => v.localService) || null;
+  }
+  function estimateDailyReadingCurrentCharIndex() {
+    const elapsedMs = dailyReadingElapsedMs + (dailyReadingTtsActive && !dailyReadingTtsPaused ? Date.now() - dailyReadingSegmentStartTime : 0);
+    const chars = Math.round(elapsedMs / 1e3 * TTS_ESTIMATED_CHARS_PER_SECOND);
+    return dailyReadingSpokenOffset + chars;
+  }
+  function skipDailyReadingTts(deltaSeconds) {
+    if (!dailyReadingTtsActive || !dailyReadingFullText) return;
+    const mySessionToken = dailyReadingTtsSessionToken;
+    const deltaChars = Math.round(deltaSeconds * TTS_ESTIMATED_CHARS_PER_SECOND);
+    let targetIndex = estimateDailyReadingCurrentCharIndex() + deltaChars;
+    targetIndex = Math.max(0, Math.min(targetIndex, dailyReadingFullText.length));
+    if (targetIndex > 0 && targetIndex < dailyReadingFullText.length) {
+      const lastSpace = dailyReadingFullText.lastIndexOf(" ", targetIndex);
+      if (lastSpace !== -1) targetIndex = lastSpace + 1;
+    }
+    if (targetIndex >= dailyReadingFullText.length - 1) {
+      handleDailyReadingFinishedNaturally(mySessionToken);
+      return;
+    }
+    const remainingText = dailyReadingFullText.slice(targetIndex).trimStart();
+    speakDailyReadingPassage(remainingText, mySessionToken, false, targetIndex);
+  }
+  function stopDailyReadingTts() {
+    dailyReadingTtsSessionToken++;
+    dailyReadingTtsPaused = false;
+    dailyReadingTtsActive = false;
+    dailyReadingFullText = "";
+    dailyReadingSpokenOffset = 0;
+    dailyReadingElapsedMs = 0;
+    dailyReadingCurrentUtterance = null;
+    if (window.speechSynthesis) {
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+      window.speechSynthesis.cancel();
+    }
+    if (typeof activeMediaController !== "undefined" && activeMediaController && activeMediaController.kind === "tts") {
+      clearActiveMedia();
+    }
+    hideDailyReadingContinuePrompt();
+    updateDailyReadingTtsButton();
+  }
+  async function handleDailyReadingFinishedNaturally(mySessionToken) {
+    const dayObj = cachedScheduleDays.find((d) => d.day === currentPlanViewDayNumber);
+    if (!dayObj) {
+      stopDailyReadingTts();
+      return;
+    }
+    await togglePlanDay(dayObj.rowIndex, true);
+    if (mySessionToken !== dailyReadingTtsSessionToken) return;
+    if (!currentPlanStartDate) {
+      stopDailyReadingTts();
+      return;
+    }
+    const totalDays = cachedScheduleDays.length;
+    const nextDayNumber = dayObj.day + 1;
+    if (nextDayNumber > totalDays) {
+      stopDailyReadingTts();
+      return;
+    }
+    setTimeout(() => {
+      if (mySessionToken !== dailyReadingTtsSessionToken) return;
+      setCurrentPlanViewDayNumber(nextDayNumber);
+      renderActivePlanView();
+      showDailyReadingContinuePrompt(nextDayNumber, mySessionToken);
+    }, 1500);
+  }
+  function showDailyReadingContinuePrompt(nextDayNumber, mySessionToken) {
+    const promptEl = document.getElementById("daily-reading-continue-prompt");
+    const textEl = document.getElementById("daily-reading-continue-text");
+    if (!promptEl || !textEl) {
+      stopDailyReadingTts();
+      return;
+    }
+    let secondsLeft = 10;
+    const updateText = () => {
+      textEl.textContent = `Continue to Day ${nextDayNumber}'s reading aloud? (stopping automatically in ${secondsLeft}s)`;
+    };
+    updateText();
+    promptEl.style.display = "flex";
+    dailyReadingContinueCountdownInterval = setInterval(() => {
+      secondsLeft -= 1;
+      if (secondsLeft > 0) updateText();
+    }, 1e3);
+    dailyReadingContinueTimeoutHandle = setTimeout(() => {
+      if (mySessionToken !== dailyReadingTtsSessionToken) return;
+      respondToDailyReadingContinuePrompt(false);
+    }, 1e4);
+  }
+  function hideDailyReadingContinuePrompt() {
+    const promptEl = document.getElementById("daily-reading-continue-prompt");
+    if (promptEl) promptEl.style.display = "none";
+    if (dailyReadingContinueCountdownInterval) {
+      clearInterval(dailyReadingContinueCountdownInterval);
+      dailyReadingContinueCountdownInterval = null;
+    }
+    if (dailyReadingContinueTimeoutHandle) {
+      clearTimeout(dailyReadingContinueTimeoutHandle);
+      dailyReadingContinueTimeoutHandle = null;
+    }
+  }
+  function respondToDailyReadingContinuePrompt(continueReading) {
+    hideDailyReadingContinuePrompt();
+    if (continueReading) runDailyReadingTtsCycle();
+    else stopDailyReadingTts();
+  }
+
+  // src/shared/audioPlayer.js
+  function togglePlay(i) {
+    const audio = document.getElementById(`audio-player-${i}`);
+    const btn = document.getElementById(`play-btn-${i}`);
+    if (audio.paused) {
+      audio.play();
+      btn.textContent = "\u275A\u275A";
+    } else {
+      audio.pause();
+      btn.textContent = "\u25B6";
+    }
+  }
+  function resetPlayButton(i) {
+    const btn = document.getElementById(`play-btn-${i}`);
+    if (btn) btn.textContent = "\u25B6";
+  }
+  function skipAudio(elementId, seconds) {
+    const audio = document.getElementById(elementId);
+    if (audio) {
+      audio.currentTime = Math.min(Math.max(audio.currentTime + seconds, 0), audio.duration);
+    }
+  }
+  function updateProgress(i) {
+    const audio = document.getElementById(`audio-player-${i}`);
+    const progress = document.getElementById(`progress-${i}`);
+    const timeDisplay = document.getElementById(`time-${i}`);
+    if (audio && audio.duration) {
+      progress.value = audio.currentTime / audio.duration * 100;
+      timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+    }
+  }
+  function seekAudio(i, value) {
+    const audio = document.getElementById(`audio-player-${i}`);
+    if (audio && audio.duration) {
+      audio.currentTime = value / 100 * audio.duration;
+    }
+  }
+  function initAudio(i) {
+    const audio = document.getElementById(`audio-player-${i}`);
+    const timeDisplay = document.getElementById(`time-${i}`);
+    if (audio && audio.duration) {
+      timeDisplay.textContent = `0:00 / ${formatTime(audio.duration)}`;
+    }
+  }
+  function formatTime(seconds) {
+    if (isNaN(seconds)) return "0:00";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s < 10 ? "0" : ""}${s}`;
   }
 
   // src/shared/churchResources.js
@@ -8463,6 +8759,9 @@ ${url}`;
   var currentPlanSubTab = "reading";
   var currentPlanStartDate = null;
   var currentPlanViewDayNumber = null;
+  function setCurrentPlanViewDayNumber(dayNumber) {
+    currentPlanViewDayNumber = dayNumber;
+  }
   var calendarViewYear = null;
   var calendarViewMonth = null;
   var readingNotificationMessage = null;
@@ -8471,16 +8770,6 @@ ${url}`;
   var isReadingNotifCollapsed = false;
   var isNotesCollapsed = false;
   var isResourcesCollapsed = true;
-  var dailyReadingTtsActive = false;
-  var dailyReadingTtsPaused = false;
-  var dailyReadingTtsSessionToken = 0;
-  var dailyReadingContinueCountdownInterval = null;
-  var dailyReadingContinueTimeoutHandle = null;
-  var dailyReadingFullText = "";
-  var dailyReadingSpokenOffset = 0;
-  var dailyReadingSegmentStartTime = 0;
-  var dailyReadingElapsedMs = 0;
-  var TTS_ESTIMATED_CHARS_PER_SECOND = 13;
   var bibleCache = {};
   var cachedChaptersList = null;
   var pendingShareTarget = null;
@@ -8625,285 +8914,6 @@ ${url}`;
       html += `<span><sup style="font-size:11px; color:var(--text-muted); margin-right:2px;">${verseNum}</sup>${v.text} </span>`;
     });
     return `<div id="daily-reading-passage-text" style="text-align:justify; line-height:1.7; font-size:16px; color:var(--text-main); padding:6px 2px;">${html}</div>`;
-  }
-  var cachedTtsVoices = [];
-  function refreshTtsVoiceCache() {
-    if (!window.speechSynthesis) return;
-    const v = window.speechSynthesis.getVoices();
-    if (v && v.length) cachedTtsVoices = v;
-  }
-  refreshTtsVoiceCache();
-  if (window.speechSynthesis) {
-    window.speechSynthesis.onvoiceschanged = () => {
-      refreshTtsVoiceCache();
-      warmUpDailyReadingTtsVoice();
-    };
-  }
-  var dailyReadingTtsWarmedUp = false;
-  function warmUpDailyReadingTtsVoice() {
-    if (dailyReadingTtsWarmedUp) return;
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    const voice = pickDailyReadingTtsVoice();
-    if (!voice) return;
-    dailyReadingTtsWarmedUp = true;
-    const warmup = new SpeechSynthesisUtterance(".");
-    warmup.voice = voice;
-    warmup.volume = 0;
-    warmup.onerror = () => {
-    };
-    try {
-      synth.speak(warmup);
-    } catch (e) {
-    }
-  }
-  warmUpDailyReadingTtsVoice();
-  function pickDailyReadingTtsVoice() {
-    const synth = window.speechSynthesis;
-    if (!synth) return null;
-    let voices = synth.getVoices() || [];
-    if (!voices.length) voices = cachedTtsVoices;
-    if (!voices.length) return null;
-    return voices.find((v) => /google uk english male/i.test(v.name)) || voices.find((v) => (v.lang || "").toLowerCase() === "en-gb" && /male/i.test(v.name)) || voices.find((v) => (v.lang || "").toLowerCase() === "en-gb") || null;
-  }
-  function updateDailyReadingTtsButton() {
-    const btn = document.getElementById("daily-reading-tts-btn");
-    if (!btn) return;
-    const isSpeaking = dailyReadingTtsActive && !dailyReadingTtsPaused;
-    btn.classList.toggle("active", isSpeaking);
-    btn.title = isSpeaking ? "Pause reading aloud" : dailyReadingTtsActive ? "Resume reading aloud" : "Play today's reading aloud";
-    btn.innerHTML = isSpeaking ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>' : '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>';
-    if (typeof activeMediaController !== "undefined" && activeMediaController && activeMediaController.kind === "tts") {
-      updateMiniPlayerPlayPauseIcon(isSpeaking);
-    }
-    const rewindBtn = document.getElementById("daily-reading-rewind-btn");
-    const forwardBtn = document.getElementById("daily-reading-forward-btn");
-    if (rewindBtn) rewindBtn.style.display = dailyReadingTtsActive ? "flex" : "none";
-    if (forwardBtn) forwardBtn.style.display = dailyReadingTtsActive ? "flex" : "none";
-  }
-  function registerDailyReadingMediaController(dayNumber) {
-    const btn = document.getElementById("daily-reading-tts-btn");
-    if (!btn) return;
-    handleMediaStarted({
-      kind: "tts",
-      element: btn,
-      // used only for the generic on-screen-visibility check
-      title: `Day ${dayNumber} Reading`,
-      isPaused: () => dailyReadingTtsPaused,
-      play: () => resumeDailyReadingTts(),
-      pause: () => pauseDailyReadingTts(),
-      stop: () => stopDailyReadingTts()
-    });
-  }
-  function toggleDailyReadingTts() {
-    if (dailyReadingTtsActive) {
-      if (dailyReadingTtsPaused) resumeDailyReadingTts();
-      else pauseDailyReadingTts();
-      return;
-    }
-    if (!window.speechSynthesis) {
-      alert("Text-to-speech is not supported in this browser.");
-      return;
-    }
-    if (!ensureLoggedInFor("Sign in to track your reading progress.", () => toggleDailyReadingTts())) return;
-    if (currentPlanSubTab !== "reading") switchPlanSubTab("reading");
-    dailyReadingTtsSessionToken++;
-    runDailyReadingTtsCycle();
-  }
-  function pauseDailyReadingTts() {
-    if (!dailyReadingTtsActive || dailyReadingTtsPaused || !window.speechSynthesis) return;
-    window.speechSynthesis.pause();
-    dailyReadingTtsPaused = true;
-    dailyReadingElapsedMs += Date.now() - dailyReadingSegmentStartTime;
-    updateDailyReadingTtsButton();
-  }
-  function resumeDailyReadingTts() {
-    if (!dailyReadingTtsActive || !dailyReadingTtsPaused || !window.speechSynthesis) return;
-    window.speechSynthesis.resume();
-    dailyReadingTtsPaused = false;
-    dailyReadingSegmentStartTime = Date.now();
-    updateDailyReadingTtsButton();
-    registerDailyReadingMediaController(currentPlanViewDayNumber);
-  }
-  function runDailyReadingTtsCycle() {
-    const mySessionToken = dailyReadingTtsSessionToken;
-    const container = document.getElementById("daily-reading-passage-text");
-    let text = "";
-    if (container) {
-      const clone = container.cloneNode(true);
-      clone.querySelectorAll("sup").forEach((el) => el.remove());
-      text = clone.textContent.replace(/\s+/g, " ").trim();
-    }
-    if (!container || !text) {
-      stopDailyReadingTts();
-      return;
-    }
-    dailyReadingFullText = text;
-    registerDailyReadingMediaController(currentPlanViewDayNumber);
-    speakDailyReadingPassage(text, mySessionToken, false, 0);
-  }
-  var TTS_STARTUP_GRACE_MS = 1500;
-  var dailyReadingCurrentUtterance = null;
-  function speakDailyReadingPassage(text, mySessionToken, useLocalFallbackVoice, startOffset) {
-    const synth = window.speechSynthesis;
-    if (dailyReadingCurrentUtterance) {
-      dailyReadingCurrentUtterance.onstart = null;
-      dailyReadingCurrentUtterance.onboundary = null;
-      dailyReadingCurrentUtterance.onend = null;
-      dailyReadingCurrentUtterance.onerror = null;
-    }
-    const utter = new SpeechSynthesisUtterance(text);
-    dailyReadingCurrentUtterance = utter;
-    const voice = useLocalFallbackVoice ? pickLocalFallbackTtsVoice() : pickDailyReadingTtsVoice();
-    if (voice) utter.voice = voice;
-    utter.rate = 0.9;
-    utter.pitch = 0.5;
-    dailyReadingSpokenOffset = startOffset;
-    dailyReadingSegmentStartTime = Date.now();
-    dailyReadingElapsedMs = 0;
-    let started = false;
-    utter.onstart = () => {
-      started = true;
-    };
-    utter.onboundary = () => {
-      started = true;
-    };
-    utter.onend = () => {
-      if (mySessionToken !== dailyReadingTtsSessionToken) return;
-      handleDailyReadingFinishedNaturally(mySessionToken);
-    };
-    utter.onerror = () => {
-      if (mySessionToken !== dailyReadingTtsSessionToken) return;
-      stopDailyReadingTts();
-    };
-    if (synth.paused) synth.resume();
-    synth.cancel();
-    setTimeout(() => {
-      if (dailyReadingCurrentUtterance !== utter) return;
-      synth.speak(utter);
-    }, 50);
-    dailyReadingTtsActive = true;
-    dailyReadingTtsPaused = false;
-    updateDailyReadingTtsButton();
-    if (!useLocalFallbackVoice) {
-      setTimeout(() => {
-        if (mySessionToken !== dailyReadingTtsSessionToken) return;
-        if (started) return;
-        speakDailyReadingPassage(text, mySessionToken, true, startOffset);
-      }, TTS_STARTUP_GRACE_MS);
-    }
-  }
-  function pickLocalFallbackTtsVoice() {
-    const synth = window.speechSynthesis;
-    if (!synth) return null;
-    let voices = synth.getVoices() || [];
-    if (!voices.length) voices = cachedTtsVoices;
-    if (!voices.length) return null;
-    return voices.find((v) => v.localService && /^en/i.test(v.lang || "")) || voices.find((v) => v.localService) || null;
-  }
-  function estimateDailyReadingCurrentCharIndex() {
-    const elapsedMs = dailyReadingElapsedMs + (dailyReadingTtsActive && !dailyReadingTtsPaused ? Date.now() - dailyReadingSegmentStartTime : 0);
-    const chars = Math.round(elapsedMs / 1e3 * TTS_ESTIMATED_CHARS_PER_SECOND);
-    return dailyReadingSpokenOffset + chars;
-  }
-  function skipDailyReadingTts(deltaSeconds) {
-    if (!dailyReadingTtsActive || !dailyReadingFullText) return;
-    const mySessionToken = dailyReadingTtsSessionToken;
-    const deltaChars = Math.round(deltaSeconds * TTS_ESTIMATED_CHARS_PER_SECOND);
-    let targetIndex = estimateDailyReadingCurrentCharIndex() + deltaChars;
-    targetIndex = Math.max(0, Math.min(targetIndex, dailyReadingFullText.length));
-    if (targetIndex > 0 && targetIndex < dailyReadingFullText.length) {
-      const lastSpace = dailyReadingFullText.lastIndexOf(" ", targetIndex);
-      if (lastSpace !== -1) targetIndex = lastSpace + 1;
-    }
-    if (targetIndex >= dailyReadingFullText.length - 1) {
-      handleDailyReadingFinishedNaturally(mySessionToken);
-      return;
-    }
-    const remainingText = dailyReadingFullText.slice(targetIndex).trimStart();
-    speakDailyReadingPassage(remainingText, mySessionToken, false, targetIndex);
-  }
-  function stopDailyReadingTts() {
-    dailyReadingTtsSessionToken++;
-    dailyReadingTtsPaused = false;
-    dailyReadingTtsActive = false;
-    dailyReadingFullText = "";
-    dailyReadingSpokenOffset = 0;
-    dailyReadingElapsedMs = 0;
-    dailyReadingCurrentUtterance = null;
-    if (window.speechSynthesis) {
-      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-      window.speechSynthesis.cancel();
-    }
-    if (typeof activeMediaController !== "undefined" && activeMediaController && activeMediaController.kind === "tts") {
-      clearActiveMedia();
-    }
-    hideDailyReadingContinuePrompt();
-    updateDailyReadingTtsButton();
-  }
-  async function handleDailyReadingFinishedNaturally(mySessionToken) {
-    const dayObj = cachedScheduleDays.find((d) => d.day === currentPlanViewDayNumber);
-    if (!dayObj) {
-      stopDailyReadingTts();
-      return;
-    }
-    await togglePlanDay(dayObj.rowIndex, true);
-    if (mySessionToken !== dailyReadingTtsSessionToken) return;
-    if (!currentPlanStartDate) {
-      stopDailyReadingTts();
-      return;
-    }
-    const totalDays = cachedScheduleDays.length;
-    const nextDayNumber = dayObj.day + 1;
-    if (nextDayNumber > totalDays) {
-      stopDailyReadingTts();
-      return;
-    }
-    setTimeout(() => {
-      if (mySessionToken !== dailyReadingTtsSessionToken) return;
-      currentPlanViewDayNumber = nextDayNumber;
-      renderActivePlanView();
-      showDailyReadingContinuePrompt(nextDayNumber, mySessionToken);
-    }, 1500);
-  }
-  function showDailyReadingContinuePrompt(nextDayNumber, mySessionToken) {
-    const promptEl = document.getElementById("daily-reading-continue-prompt");
-    const textEl = document.getElementById("daily-reading-continue-text");
-    if (!promptEl || !textEl) {
-      stopDailyReadingTts();
-      return;
-    }
-    let secondsLeft = 10;
-    const updateText = () => {
-      textEl.textContent = `Continue to Day ${nextDayNumber}'s reading aloud? (stopping automatically in ${secondsLeft}s)`;
-    };
-    updateText();
-    promptEl.style.display = "flex";
-    dailyReadingContinueCountdownInterval = setInterval(() => {
-      secondsLeft -= 1;
-      if (secondsLeft > 0) updateText();
-    }, 1e3);
-    dailyReadingContinueTimeoutHandle = setTimeout(() => {
-      if (mySessionToken !== dailyReadingTtsSessionToken) return;
-      respondToDailyReadingContinuePrompt(false);
-    }, 1e4);
-  }
-  function hideDailyReadingContinuePrompt() {
-    const promptEl = document.getElementById("daily-reading-continue-prompt");
-    if (promptEl) promptEl.style.display = "none";
-    if (dailyReadingContinueCountdownInterval) {
-      clearInterval(dailyReadingContinueCountdownInterval);
-      dailyReadingContinueCountdownInterval = null;
-    }
-    if (dailyReadingContinueTimeoutHandle) {
-      clearTimeout(dailyReadingContinueTimeoutHandle);
-      dailyReadingContinueTimeoutHandle = null;
-    }
-  }
-  function respondToDailyReadingContinuePrompt(continueReading) {
-    hideDailyReadingContinuePrompt();
-    if (continueReading) runDailyReadingTtsCycle();
-    else stopDailyReadingTts();
   }
   document.addEventListener("input", (e) => {
     if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") {

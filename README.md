@@ -180,6 +180,33 @@ double-click open, upload, or share — nothing changes about how you use it.
   timer). Fixed with a `clearUserRecordsMap()` setter, confirmed by
   populating the cache, clearing it, and checking it's actually empty
   afterward — not just that the call doesn't throw.
+- **`shared/dailyReadingTts.js`** — the "Listen Aloud" text-to-speech feature
+  on the Daily Reading tab: voice selection, start/pause/resume/stop, the
+  skip-forward/back approximation (the Web Speech API has no real seek), the
+  "continue to tomorrow?" prompt after a day finishes, and registering with
+  the shared mini-player bar so its controls work for a TTS session too, not
+  just audio/video. Reading Plan's own passage-rendering code
+  (`renderPassageText`, `parsePassageSegment`, etc.) stayed in `app.js` —
+  Listen Aloud only reads from it, isn't exclusive to it.
+  Depends on `shared/videoPlayer.js`'s mini-player functions and several
+  Reading Plan state variables from `app.js` (`cachedScheduleDays`,
+  `currentPlanStartDate`, `currentPlanSubTab`, `currentPlanViewDayNumber`).
+  **A real bug, caught before shipping**: the auto-advance-to-tomorrow logic
+  directly reassigned `currentPlanViewDayNumber`, the same illegal-once-
+  imported pattern found in three earlier modules. Fixed with a
+  `setCurrentPlanViewDayNumber()` setter — and confirmed properly this
+  time, by running the actual "day finishes → wait 1.5s → advance" flow
+  end-to-end and checking the day number actually changed, not just that
+  the setter itself works in isolation. A second, smaller version of the
+  same mistake (reading `currentPlanViewDayNumber`, not just writing it,
+  in two other spots) was caught by a broader dependency sweep after the
+  first fix, not the initial one — a reminder that even a careful first
+  pass can miss a second usage of the same variable.
+  Also worth knowing for future testing: registering the mini-player
+  starts a `setInterval`-based visibility watcher — fine in a real browser,
+  but it silently hung a test script for a full five minutes with no error,
+  since nothing in Node ever tears it down. Diagnosed correctly and worked
+  around with an explicit `process.exit()`, not a bug in the code itself.
 - **`app.js`** — everything else, for now. It `import`s from both files
   above. As more pieces get modularized, this file will keep shrinking and
   new files will appear alongside `core/` and `shared/`.
@@ -243,14 +270,15 @@ whole point of modularizing in the first place.
 
 ## What's next
 
-Ten pieces down (`core/db.js`, `shared/adminUtils.js`, `shared/videoPlayer.js`,
+Eleven pieces down (`core/db.js`, `shared/adminUtils.js`, `shared/videoPlayer.js`,
 `shared/byTheBook.js`, `shared/twBibleCourse.js`, `shared/coreD.js`,
 `shared/audioPlayer.js`, `shared/churchResources.js`, `shared/cords.js`,
-`shared/records.js`). All three study features, every widely-shared utility
-flagged along the way, Church Resources, Cords, and Records/badges are now
-their own modules. Everything else the app does (auth/session handling, tab
-navigation, the core Bible reading view and search, reading plans, and
-Settings) is still in `app.js`, with no committed plan to split it further.
+`shared/records.js`, `shared/dailyReadingTts.js`). All three study features,
+every widely-shared utility flagged along the way, Church Resources, Cords,
+Records/badges, and the Daily Reading TTS feature are now their own modules.
+Everything else the app does (auth/session handling, tab navigation, the
+core Bible reading view and search, the rest of Reading Plans, and Settings)
+is still in `app.js`, with no committed plan to split it further.
 No standing guess about what's "probably self-contained" has survived
 contact with the actual code yet, so none is offered here either — the
 honest answer is that finding out requires doing the same careful mapping
