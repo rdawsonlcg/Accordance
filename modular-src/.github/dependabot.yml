@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # esbuild and jsdom (see modular-src/package.json) -- Dependabot opens a
+  # pull request automatically when either has an update, which the CI
+  # workflow (.github/workflows/ci.yml) then tests before you even look at
+  # it. "directory: /modular-src" because that's where package.json and
+  # package-lock.json actually live, not the repo root.
+  - package-ecosystem: "npm"
+    directory: "/modular-src"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # Keeps the CI workflow's own building blocks current too (e.g. the
+  # actions/checkout and actions/setup-node versions in ci.yml) -- these are
+  # a separate ecosystem from npm packages, so they need their own entry.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
