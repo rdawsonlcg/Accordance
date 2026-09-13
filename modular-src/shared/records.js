@@ -1073,3 +1073,25 @@ import {
     export function closeRecordsView() {
       switchTab(lastMainTabId);
     }
+
+// ----------------------------------------------------------------------------
+// Test utilities only — used by tests/ (see tests/testExports.js), never
+// exported into the shipped build. Same reasoning as
+// shared/twBibleCourse.js's own test-utilities section, below its last real
+// function: recordBadgesList/userRecordsMap are ordinary imported bindings
+// from any other file's point of view, so setting them for a test has to go
+// through a real setter in the module that actually owns them.
+//
+// __getUserRecordsMapForTest matters for a subtler reason than the setter:
+// clearUserRecordsMap() (the real function this whole test-utility section
+// exists to help verify) REASSIGNS userRecordsMap to a brand-new {}, rather
+// than mutating the existing one's contents. build.js's window-flattening
+// step copies each export's value onto `window` once, at bundle-eval time —
+// a later reassignment like that one never updates the already-copied
+// window.userRecordsMap, so reading it after calling clearUserRecordsMap()
+// would silently show the stale pre-test object instead of the real,
+// now-cleared one.
+// ----------------------------------------------------------------------------
+export function __setRecordBadgesListForTest(list) { recordBadgesList = list; }
+export function __setUserRecordsMapForTest(map) { userRecordsMap = map; }
+export function __getUserRecordsMapForTest() { return userRecordsMap; }

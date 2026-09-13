@@ -5,9 +5,14 @@
   "description": "Modular source for the Bible App -- build.js bundles this into the single-file HTML output. verify.js checks the result.",
   "scripts": {
     "build": "node build.js",
-    "verify": "node verify.js"
+    "verify": "node verify.js",
+    "test": "node --test --test-force-exit",
+    "check": "npm run build && npm run verify && npm test"
   },
   "dependencies": {
     "esbuild": "^0.28.2"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.1"
   }
 }

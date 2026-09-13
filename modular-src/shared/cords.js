@@ -581,3 +581,27 @@ import {
       const scrollEl = document.getElementById('cord-messages-scroll');
       if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
     }
+
+// ----------------------------------------------------------------------------
+// Test utilities only — used by tests/ (see tests/testExports.js), never
+// exported into the shipped build. Same reasoning as
+// shared/twBibleCourse.js's own test-utilities section: cordPollTimer is an
+// ordinary imported binding from any other file's point of view, so setting
+// it for a test (to then verify stopCordPollTimer's fix actually clears it)
+// has to go through a real setter in the module that owns it.
+//
+// The getter matters just as much as the setter here, and for a subtler
+// reason: cordPollTimer is a primitive (a timer id, or null), not an object.
+// build.js's window-flattening step (Object.assign(window, __App)) copies
+// each export's value onto `window` ONCE, at bundle-eval time — for an
+// object/array export, later code mutating that same object's contents
+// (`.push(...)`, `.length = 0`) is still visible through `window.thatExport`,
+// since both point at the identical object. A primitive has no such shared
+// identity: reassigning cordPollTimer internally does NOT change whatever
+// value was already copied onto `window.cordPollTimer` earlier. Reading
+// `window.cordPollTimer` after calling stopCordPollTimer() looks like a
+// meaningful assertion but would actually just re-read that original stale
+// snapshot regardless of what really happened — silently proving nothing.
+// ----------------------------------------------------------------------------
+export function __setCordPollTimerForTest(id) { cordPollTimer = id; }
+export function __getCordPollTimerForTest() { return cordPollTimer; }

@@ -3617,3 +3617,27 @@ export {
   updateTWCourseAdminResourceField,
   updateTWCourseAdminVideoField
 };
+
+// ----------------------------------------------------------------------------
+// Test utilities only — used by tests/ (see tests/testExports.js), never
+// exported into the shipped build. Deliberately have NO `export` keyword
+// here (unlike shared/twBibleCourse.js's __setTwBibleCourseDataForTest and
+// similar): those stay private from THIS file's perspective unless app.js
+// explicitly imports and re-exports them, but a function declared directly
+// in app.js -- the entry point -- would be part of its exports (and so get
+// flattened onto `window`) the moment it has an `export` keyword at all,
+// with no way for build.js's extraExportNames gating to keep it out of a
+// real production build. Staying a plain, undecorated function here and
+// relying entirely on extraExportNames to append the export (only when a
+// test asks for it) is what keeps these out of the shipped file.
+function __setCurrentUserForTest(user) { currentUser = user; }
+function __setCurrentPlanStartDateForTest(date) { currentPlanStartDate = date; }
+// A getter, not window.currentPlanViewDayNumber, for the same reason
+// shared/cords.js's __getCordPollTimerForTest and shared/records.js's
+// __getUserRecordsMapForTest exist: currentPlanViewDayNumber is a
+// primitive, so build.js's Object.assign(window, __App) copies its value
+// onto `window` once, at bundle-eval time. setCurrentPlanViewDayNumber()
+// (the real function this exists to help verify) reassigns it afterward,
+// which never updates that already-copied window property.
+function __getCurrentPlanViewDayNumberForTest() { return currentPlanViewDayNumber; }
+

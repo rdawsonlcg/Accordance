@@ -237,6 +237,7 @@ tools). Then, from this folder:
 npm install
 npm run build
 npm run verify
+npm test
 ```
 
 `verify` checks that every function the HTML calls from an `onclick`/`onchange`/
@@ -244,6 +245,9 @@ etc. attribute is actually reachable after bundling — a real bug slipped
 through here once (a function called after an `if (...)` guard in the same
 attribute got silently missed), so this check runs as a matter of course
 after every build now, not just when something seems wrong.
+
+`npm run check` runs all three (`build`, `verify`, `test`) together in one
+command — this is what CI runs on every push (see `.github/workflows/ci.yml`).
 
 This writes two identical files one directory up:
 `Accordance.html` (open, upload, or share this one directly) and
@@ -255,6 +259,81 @@ You won't normally need to do this yourself — going forward, I'll edit these
 source files directly and hand you the freshly-built HTML each time, exactly
 like every other change this session. This is here so you have the real
 source under your control too, and so the rebuild process isn't a mystery.
+
+## The test suite (`tests/`)
+
+Every real bug found across this whole project's history — and there were
+a fair number, always caught by actually running code, never by a build
+succeeding on its own — has a permanent, automated regression test now,
+instead of the ad-hoc, thrown-away-afterward verification each one
+originally got caught by. `npm test` runs all of them; `npm run check` runs
+the full `build → verify → test` pipeline together.
+
+**`tests/checkDependencies.js`** is the most valuable single file in here: an
+automated version of a check done by hand, over and over, throughout this
+project's history — for every `shared/*.js` module, does it use a table
+accessor (`someTable.select(...)`) or `supabaseClient` directly without
+actually importing it? This exact class of bug shipped three separate
+times before this check existed (`shared/churchResources.js` missing
+`churchResourcesTable`, `shared/twBibleCourse.js` missing
+`twCourseProgressTable`, `shared/cords.js` almost missing
+`cordMembersTable`) — each slipped through because a plain method call
+looks identical whether its receiver is properly imported or not, and a
+build succeeding doesn't catch it either, since a bare undeclared
+identifier is valid JavaScript right up until the moment that exact line
+actually runs.
+
+**Every other `*.test.js` file** targets one specific, real, previously-
+shipped bug — not general coverage for its own sake. Each file's header
+comment explains exactly which bug it guards against and why. A few
+patterns worth knowing if you (or I, in a future session) add to these:
+
+- **Tests run against the real bundled artifact**, not the unbundled source
+  — `tests/helpers/loadApp.js` calls `build.js`'s own `bundleApp()`
+  function and evaluates the result inside a fresh jsdom window each time.
+  This costs a little bundling time per test, but it's deliberate: a few of
+  this project's real bugs were specific to how esbuild bundles things (a
+  multi-line `someTable\n.select(...)` chain, an eager top-level IIFE
+  racing a circular import's load order) — none of those would show up
+  testing the unbundled source modules in isolation.
+- **Internal functions with no `onclick` attribute of their own** (so
+  correctly stay private in the real shipped file) can still be reached
+  directly in a test via `extraExportNames` — see `tests/testExports.js`
+  for the curated list, and `build.js`'s own header comment for why this
+  never affects what actually ships. `bundleApp()` only attaches these
+  extra names to `window` when a test explicitly asks for it.
+- **A few modules have small, permanently-present `__setXForTest`/
+  `__getXForTest` functions** (e.g. `shared/cords.js`'s
+  `__setCordPollTimerForTest`) — needed because an imported binding can't
+  be reassigned from outside the file that declares it, the same reason
+  the real app needed `setCurrentPlanViewDayNumber`,
+  `setActiveStudyFilters`, etc. elsewhere, just for a testing need instead
+  of a real caller's. These stay out of the shipped build the same way
+  everything else in this bullet does. The **getters matter as much as the
+  setters**: several of these are primitives (a timer id, a map, a day
+  number), and `build.js`'s `Object.assign(window, __App)` copies each
+  export's value onto `window` *once*, at bundle-eval time — reading
+  `window.thatValue` again later shows that original snapshot, not
+  whatever the app's internal state has become since. A getter function,
+  called fresh, reads the real current value; naively checking
+  `window.thatValue` after calling a setter *looks* like a meaningful
+  assertion but silently proves nothing. This tripped up more than one of
+  these tests before being recognized as a pattern.
+- **`npm test` runs with `--test-force-exit`** (see `tests/helpers/loadApp.js`'s
+  header comment for the full reasoning) — some of the app's own real
+  behavior intentionally starts things a browser tab's page-unload would
+  normally clean up (a mini-player visibility watcher that ticks every
+  400ms for as long as a session is active, for instance), and Node has no
+  equivalent teardown moment. This is the standard, intended tool for a
+  jsdom-based test suite, not a workaround for a bug in the app.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs `npm ci`, then the full `build → verify → test`
+pipeline, on every push and every pull request. A broken state — a missing
+import, a function that stops being reachable, a regression in any of the
+bugs covered above — fails here before it can reach `main`, rather than
+waiting to be noticed later.
 
 ## A gotcha worth knowing about (already handled, but worth understanding)
 

@@ -1,0 +1,35 @@
+name: CI
+
+# Runs on every push and every pull request, against modular-src/ -- the
+# actual source of the app. Accordance.html/index.html are BUILT ARTIFACTS
+# (see modular-src/build.js); this workflow doesn't check them in, it
+# rebuilds them fresh every run and verifies that build, so a broken source
+# state can't reach main without failing here first.
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-verify-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: modular-src
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (bundles src/ into Accordance.html + index.html)
+        run: npm run build
+
+      - name: Verify (every onclick-referenced function is actually reachable)
+        run: npm run verify
+
+      - name: Test (the regression suite in tests/)
+        run: npm test
