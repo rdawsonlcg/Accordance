@@ -476,7 +476,7 @@ import {
         ${foundationsSuggestionsHtml(item)}
       `;
 
-      if (heroPreviewEmbedUrl) sizeFoundationsHeroVideoBg();
+      if (heroPreviewEmbedUrl) { sizeFoundationsHeroVideoBg(); scheduleFoundationsHeroVideoBgRecheck(); }
     }
 
     // Sizes the hero video preview's iframe to "cover" its box (crop to fill
@@ -498,6 +498,32 @@ import {
       iframe.style.width = `${Math.ceil(iw * 1.15)}px`;
       iframe.style.height = `${Math.ceil(ih * 1.15)}px`;
       iframe.style.transform = 'translate(-50%, -50%)';
+    }
+
+    // The very first call to sizeFoundationsHeroVideoBg() for a given hero
+    // happens synchronously right after its innerHTML is set -- before the
+    // page's custom heading webfont (Bebas Neue, loaded with
+    // font-display:swap) has necessarily finished downloading. The title
+    // renders in a fallback font in the meantime, which measures shorter/
+    // differently than Bebas Neue does, so .foundations-hero's real content
+    // height (and therefore the video-sizing calculation above) can still
+    // change once the real font swaps in -- with nothing to re-run
+    // sizeFoundationsHeroVideoBg() afterward, the video stayed sized for
+    // the smaller, pre-swap measurement rather than the banner's real final
+    // size, leaving it visibly too small once the title's real font (and
+    // real height) settled in. document.fonts.ready resolves once every
+    // font the page's CSS actually uses has loaded (immediately, if that
+    // already happened before this runs) -- re-running the same function
+    // once more when it resolves catches exactly that gap without guessing
+    // a fixed delay. sizeFoundationsHeroVideoBg() re-queries the DOM fresh
+    // every call rather than closing over a specific element, so calling it
+    // again here is safe even if the user has since closed this hero or
+    // opened a different one -- it just finds whatever (if anything) is
+    // showing right now, or harmlessly no-ops via the guard above.
+    export function scheduleFoundationsHeroVideoBgRecheck() {
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(sizeFoundationsHeroVideoBg);
+      }
     }
     // The hero video preview's own container resizes with the page (device
     // rotation, browser window resize) — keep it covering correctly rather

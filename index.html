@@ -4060,7 +4060,10 @@ ${titlesToImport.join(", ")}`)) return;
         <div class="foundations-sessions-list">${sessionsHtml}</div>
         ${foundationsSuggestionsHtml(item)}
       `;
-    if (heroPreviewEmbedUrl) sizeFoundationsHeroVideoBg();
+    if (heroPreviewEmbedUrl) {
+      sizeFoundationsHeroVideoBg();
+      scheduleFoundationsHeroVideoBgRecheck();
+    }
   }
   function sizeFoundationsHeroVideoBg() {
     const wrap = document.querySelector(".foundations-hero-video-bg");
@@ -4080,6 +4083,11 @@ ${titlesToImport.join(", ")}`)) return;
     iframe.style.width = `${Math.ceil(iw * 1.15)}px`;
     iframe.style.height = `${Math.ceil(ih * 1.15)}px`;
     iframe.style.transform = "translate(-50%, -50%)";
+  }
+  function scheduleFoundationsHeroVideoBgRecheck() {
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(sizeFoundationsHeroVideoBg);
+    }
   }
   window.addEventListener("resize", () => sizeFoundationsHeroVideoBg());
   function foundationsSuggestionsHtml(item) {
@@ -6104,7 +6112,10 @@ ${titlesToImport.join(", ")}`)) return;
         <div class="foundations-lessons-heading">Sections</div>
         <div class="foundations-sessions-list">${lessonsHtml}</div>
       `;
-    if (heroPreviewEmbedUrl) sizeFoundationsHeroVideoBg();
+    if (heroPreviewEmbedUrl) {
+      sizeFoundationsHeroVideoBg();
+      scheduleFoundationsHeroVideoBgRecheck();
+    }
   }
   function twLessonAccordionHtml(mod, lesson, idx) {
     const isOpen = openTWLessonIndex === idx;

@@ -49,7 +49,7 @@ import {
 } from './videoPlayer.js';
 import {
   normalizeFoundationsMediaList, foundationsMediaItemAccordionHtml,
-  renderFoundationsContentHtml, sizeFoundationsHeroVideoBg,
+  renderFoundationsContentHtml, sizeFoundationsHeroVideoBg, scheduleFoundationsHeroVideoBgRecheck,
   FOUNDATIONS_VIDEO_ICON_SVG, FOUNDATIONS_AUDIO_ICON_SVG
 } from './coreD.js';
 import { checkTWCourseCompletionBadges, checkTWModuleCompletionBadges } from './records.js';
@@ -493,7 +493,7 @@ export function maybeShowTWCourseCompletionModal() {
         <div class="foundations-sessions-list">${lessonsHtml}</div>
       `;
 
-      if (heroPreviewEmbedUrl) sizeFoundationsHeroVideoBg();
+      if (heroPreviewEmbedUrl) { sizeFoundationsHeroVideoBg(); scheduleFoundationsHeroVideoBgRecheck(); }
     }
 
     export function twLessonAccordionHtml(mod, lesson, idx) {
