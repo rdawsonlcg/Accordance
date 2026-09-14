@@ -1261,3 +1261,16 @@ export function maybeShowTWCourseCompletionModal() {
       openTWCourseAdminView();
       alert(`Imported ${data ? data.length : rows.length} module(s). They're now editable from this screen.`);
     }
+
+// ----------------------------------------------------------------------------
+// Test utilities only — used by tests/ (see tests/testExports.js), never
+// exported into the shipped build (build.js only attaches these to `window`
+// when a test explicitly asks for them). Exist because twBibleCourseData/
+// twCourseProgress are ordinary imported bindings from any other module's
+// point of view, and an imported binding can't be reassigned from outside
+// the file that declares it — the same reason production code needed
+// setCurrentPlanViewDayNumber, setActiveStudyFilters, etc. elsewhere in this
+// app, just for a testing need instead of a real caller's.
+// ----------------------------------------------------------------------------
+export function __setTwBibleCourseDataForTest(data) { twBibleCourseData = data; }
+export function __setTwCourseProgressForTest(progress) { twCourseProgress = progress; }
