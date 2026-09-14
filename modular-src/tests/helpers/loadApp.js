@@ -111,6 +111,13 @@ async function loadApp({ html = '', extraExportNames = [], extraSource = '', sup
   window.speechSynthesis = { getVoices: () => [], cancel() {}, pause() {}, resume() {}, speak() {} };
   window.SpeechSynthesisUtterance = function (text) { this.text = text; };
 
+  // jsdom doesn't implement scrollIntoView (it would require real layout,
+  // which jsdom doesn't do) -- several real UI functions call it on a panel
+  // right after making it visible (e.g. openTWModule, openFoundationsItem),
+  // so without this shim, tests exercising those throw "scrollIntoView is
+  // not a function" on something unrelated to what's actually being tested.
+  window.HTMLElement.prototype.scrollIntoView = function () {};
+
   const bundle = await bundleApp(extraExportNames, extraSource);
   window.eval(bundle);
 
