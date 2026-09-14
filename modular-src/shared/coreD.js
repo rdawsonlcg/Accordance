@@ -483,9 +483,18 @@ import {
     // edge-to-edge, cropping whichever dimension overflows) regardless of the
     // box's own aspect ratio — a plain width:100%/height:100% iframe would
     // instead letterbox wherever the video's native 16:9 doesn't match the
-    // box. Oversized by 15% beyond the computed cover size on both axes so a
-    // fractional rounding difference never leaves a sliver of the (opaque
-    // black) iframe edge visible.
+    // box. Oversized by 50% beyond the computed cover size on both axes --
+    // originally just 15%, enough to cover a fractional rounding gap at the
+    // edges, but deliberately increased well beyond that specifically to
+    // push YouTube's own title/channel-info overlay (which sits in a fixed
+    // band at the very top of its embed, not scaled or repositioned by
+    // anything in this app's own CSS) up past the wrapper's visible,
+    // overflow:hidden edge. There's no URL parameter that reliably hides
+    // that overlay the way controls=0 hides the normal control bar, so
+    // cropping it out of the visible area via this oversizing is the actual
+    // mechanism doing that job, not a parameter -- same idea already in use
+    // for the play/pause icon fix in shared/videoPlayer.js, applied here to
+    // a different YouTube UI element that a URL parameter can't reach at all.
     export function sizeFoundationsHeroVideoBg() {
       const wrap = document.querySelector('.foundations-hero-video-bg');
       const iframe = wrap ? wrap.querySelector('iframe') : null;
@@ -495,8 +504,8 @@ import {
       const videoRatio = 16 / 9;
       let iw, ih;
       if (w / h > videoRatio) { iw = w; ih = iw / videoRatio; } else { ih = h; iw = ih * videoRatio; }
-      iframe.style.width = `${Math.ceil(iw * 1.15)}px`;
-      iframe.style.height = `${Math.ceil(ih * 1.15)}px`;
+      iframe.style.width = `${Math.ceil(iw * 1.5)}px`;
+      iframe.style.height = `${Math.ceil(ih * 1.5)}px`;
       iframe.style.transform = 'translate(-50%, -50%)';
     }
 

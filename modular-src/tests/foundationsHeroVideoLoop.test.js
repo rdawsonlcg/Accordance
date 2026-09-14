@@ -19,6 +19,31 @@ const assert = require('node:assert');
 const { loadApp } = require('./helpers/loadApp.js');
 const testExports = require('./testExports.js');
 
+test('sizeFoundationsHeroVideoBg oversizes the iframe by 50% beyond the computed cover size, to crop YouTube\'s own title/info overlay out of the visible area', async () => {
+  const { window } = await loadApp({
+    html: `
+      <div class="foundations-hero-video-bg" id="hero-wrap">
+        <iframe src="https://example.com/embed"></iframe>
+      </div>
+    `,
+    extraExportNames: ['sizeFoundationsHeroVideoBg'],
+  });
+
+  const wrap = window.document.getElementById('hero-wrap');
+  // A wider-than-16:9 box, so width is the "cover" dimension and height
+  // gets computed from it -- makes the expected numbers easy to check by hand.
+  Object.defineProperty(wrap, 'clientWidth', { value: 1600, configurable: true });
+  Object.defineProperty(wrap, 'clientHeight', { value: 400, configurable: true });
+
+  window.sizeFoundationsHeroVideoBg();
+  const iframe = wrap.querySelector('iframe');
+
+  // Cover size for a 1600x400 box against a 16:9 video: width=1600,
+  // height=1600/(16/9)=900. Oversized by 50%: 2400x1350.
+  assert.strictEqual(iframe.style.width, '2400px');
+  assert.strictEqual(iframe.style.height, '1350px');
+});
+
 test('toYouTubeMutedPreviewEmbedUrl no longer uses the loop=1&playlist= URL trick, and enables the JS API instead', async () => {
   const { window } = await loadApp({
     extraExportNames: ['toYouTubeMutedPreviewEmbedUrl'],
