@@ -27,7 +27,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SHARED_DIR = path.join(__dirname, '..', 'src', 'shared');
+const SHARED_DIR = path.join(__dirname, '..', 'shared');
 
 function getImportedNames(source) {
   const names = new Set();
@@ -104,7 +104,7 @@ if (require.main === module) {
   if (anyMissing) {
     process.exit(1);
   } else {
-    console.log(`Checked ${results.length} module(s) in src/shared/ — every table accessor and supabaseClient reference is properly imported.`);
+    console.log(`Checked ${results.length} module(s) in shared/ — every table accessor and supabaseClient reference is properly imported.`);
   }
 }
 

@@ -2105,7 +2105,7 @@ var __App = (() => {
   };
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-  // src/app.js
+  // app.js
   var app_exports = {};
   __export(app_exports, {
     BIBLE_STUDIES_BOOK_ORDER: () => BIBLE_STUDIES_BOOK_ORDER,
@@ -2345,7 +2345,7 @@ var __App = (() => {
     updateTWCourseAdminVideoField: () => updateTWCourseAdminVideoField
   });
 
-  // src/core/db.js
+  // core/db.js
   async function fetchAllRows(table, selectCols, modify, orderColumn = "id") {
     const PAGE = 1e3;
     let firstQuery = supabaseClient.from(table).select(selectCols).order(orderColumn, { ascending: true }).range(0, PAGE - 1);
@@ -2443,7 +2443,7 @@ var __App = (() => {
   var userResourceClicksTable = createTableAccessor("user_resource_clicks");
   var profilesTable = createTableAccessor("profiles");
 
-  // src/shared/adminUtils.js
+  // shared/adminUtils.js
   function makeAdminDragReorder(getState, renderFn, containerId) {
     let draggedIndex = null;
     return {
@@ -2760,7 +2760,7 @@ ${md}
     reader.readAsText(file);
   }
 
-  // src/shared/byTheBook.js
+  // shared/byTheBook.js
   var activeBibleStudyBook = null;
   var activeStudyPresenterFilter = null;
   var activeStudyTypeFilter = "audio";
@@ -3735,7 +3735,7 @@ ${titlesToImport.join(", ")}`)) return;
     alert(`Imported ${data ? data.length : titlesToImport.length} book(s). They're now editable from this screen.`);
   }
 
-  // src/shared/coreD.js
+  // shared/coreD.js
   function openFoundationsVideoPlayer(classId, sessionIdx, startVIdx) {
     const item = foundationsList.find((i) => i.dbId === classId);
     if (!item) return;
@@ -4932,7 +4932,7 @@ ${titlesToImport.join(", ")}`)) return;
     openFoundationsAdminView();
   }
 
-  // src/shared/records.js
+  // shared/records.js
   var recordBadgesList = [];
   var recordBadgesTable = createTableAccessor("record_badges");
   var userRecordsMap = {};
@@ -5766,7 +5766,7 @@ ${titlesToImport.join(", ")}`)) return;
     markRecordBadgesSeen();
   }
 
-  // src/shared/twBibleCourse.js
+  // shared/twBibleCourse.js
   var TW_BIBLE_COURSE_BUILTIN_DEFAULT = [
     {
       id: "m1",
@@ -6662,7 +6662,7 @@ ${titlesToImport.join(", ")}`)) return;
     alert(`Imported ${data ? data.length : rows.length} module(s). They're now editable from this screen.`);
   }
 
-  // src/shared/videoPlayer.js
+  // shared/videoPlayer.js
   function getYouTubeVideoId(url) {
     if (!url) return null;
     let raw = url.trim();
@@ -7314,7 +7314,7 @@ ${titlesToImport.join(", ")}`)) return;
     }
   }
 
-  // src/shared/dailyReadingTts.js
+  // shared/dailyReadingTts.js
   var dailyReadingTtsActive = false;
   var dailyReadingTtsPaused = false;
   var dailyReadingTtsSessionToken = 0;
@@ -7605,7 +7605,7 @@ ${titlesToImport.join(", ")}`)) return;
     else stopDailyReadingTts();
   }
 
-  // src/shared/audioPlayer.js
+  // shared/audioPlayer.js
   function togglePlay(i) {
     const audio = document.getElementById(`audio-player-${i}`);
     const btn = document.getElementById(`play-btn-${i}`);
@@ -7656,7 +7656,7 @@ ${titlesToImport.join(", ")}`)) return;
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   }
 
-  // src/shared/churchResources.js
+  // shared/churchResources.js
   var churchResourcesMap = {};
   var editingChurchResourceId = null;
   function parseChurchResourceReferenceList(referenceField) {
@@ -8308,7 +8308,7 @@ ${titlesToImport.join(", ")}`)) return;
     openFsvPlayer([{ label: title || "Video", url }], 0, verseRef || "");
   }
 
-  // src/shared/cords.js
+  // shared/cords.js
   var cordList = [];
   var cordPending = [];
   var cordNewUsernames = [];
@@ -8742,7 +8742,7 @@ ${url}`;
     if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
   }
 
-  // src/app.js
+  // app.js
   function normalizeTWLessonQuizzes2(value) {
     const raw = Array.isArray(value) ? value : value ? [value] : [];
     return raw.map((q) => normalizeFoundationsQuiz(q)).filter(Boolean);

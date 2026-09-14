@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { checkAllModules } = require('./checkDependencies.js');
 
-test('every table accessor referenced in src/shared/*.js is actually imported', () => {
+test('every table accessor referenced in shared/*.js is actually imported', () => {
   const results = checkAllModules();
   const failures = results.filter(r => r.missing.length > 0);
   if (failures.length > 0) {
