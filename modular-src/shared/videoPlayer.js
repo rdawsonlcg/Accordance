@@ -684,6 +684,13 @@ import { twBibleCourseData, markTWLessonComplete } from './twBibleCourse.js';
           const mod = twBibleCourseData.find(m => m.id === ctx.moduleId);
           const lesson = mod && mod.lessons[ctx.lessonIndex];
           if (lesson && lesson.quizzes && lesson.quizzes.length > 0) { showFsvKnowledgeCheck(lesson.quizzes, ctx, 0); return; }
+          // No Knowledge Check on this lesson -- there's nothing to answer,
+          // so finishing the video IS finishing the lesson. Without this,
+          // any lesson with a video but no quiz configured could never be
+          // marked complete, which would permanently block every lesson
+          // after it (isTWLessonUnlocked requires the previous lesson to
+          // be complete before unlocking the next one).
+          if (lesson) markTWLessonComplete(ctx.moduleId, ctx.lessonIndex);
         } else if (ctx && ctx.type === 'foundations_session') {
           const item = foundationsList.find(i => i.dbId === ctx.classId);
           const session = item && (item.sessions || [])[ctx.sessionIndex];
@@ -891,3 +898,14 @@ import { twBibleCourseData, markTWLessonComplete } from './twBibleCourse.js';
         fsvState.player.playVideo();
       }
     }
+
+// ----------------------------------------------------------------------------
+// Test utility only — used by tests/ (see tests/testExports.js), never
+// exported into the shipped build. Same reasoning as
+// shared/twBibleCourse.js's own test-utilities section: fsvState is an
+// ordinary imported binding from any other file's point of view, so
+// setting it for a test (to simulate "a video just finished playing"
+// without actually driving a real player through it) has to go through a
+// real setter in the module that owns it.
+// ----------------------------------------------------------------------------
+export function __setFsvStateForTest(state) { fsvState = state; }

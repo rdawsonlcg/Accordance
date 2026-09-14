@@ -257,7 +257,15 @@ import {
       if (currentUser && currentUser.isAdmin) return true;
       if (lessonIdx <= 0) return true;
       const prevLesson = mod.lessons[lessonIdx - 1];
-      return prevLesson ? !!twCourseProgress[prevLesson.id] : true;
+      if (!prevLesson) return true;
+      // A lesson with no video and no quiz has nothing to actually
+      // "complete" -- treating it as satisfied here too (not just at the
+      // point where it's opened, in toggleTWLesson) means this heals on
+      // its own for anyone who already opened such a lesson before this
+      // fix existed, rather than requiring them to re-open it.
+      if ((!prevLesson.video || prevLesson.video.filter(v => v.url).length === 0) &&
+          (!prevLesson.quizzes || prevLesson.quizzes.length === 0)) return true;
+      return !!twCourseProgress[prevLesson.id];
     }
 
     // The ONLY way a lesson completes now — called when its Knowledge Check
@@ -640,6 +648,21 @@ export function maybeShowTWCourseCompletionModal() {
       // Reset any in-progress inline Knowledge Check for this lesson so
       // reopening it later always starts back at question 1.
       delete twInlineKcIndex[`${activeTWModuleId}:${idx}`];
+      // A lesson with neither a video nor a quiz has nothing left for the
+      // learner to actually do -- opening it to read is the whole
+      // interaction, so opening it IS finishing it. Without this, a
+      // text-only lesson could never be marked complete (there's no video
+      // to finish, and no quiz to answer), which would permanently block
+      // every lesson after it via isTWLessonUnlocked.
+      if (openTWLessonIndex === idx) {
+        const mod = twBibleCourseData.find(m => m.id === activeTWModuleId);
+        const lesson = mod && mod.lessons[idx];
+        if (lesson && (!lesson.video || lesson.video.filter(v => v.url).length === 0) &&
+            (!lesson.quizzes || lesson.quizzes.length === 0)) {
+          markTWLessonComplete(activeTWModuleId, idx);
+          return; // markTWLessonComplete already re-renders the panel
+        }
+      }
       renderTWModuleDetailPanel();
     }
 
