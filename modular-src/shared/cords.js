@@ -225,9 +225,9 @@ import {
         // While a thread is open, each poll's fresh messages are shown right
         // away, so re-mark that cord read too rather than letting a bubble
         // silently build up behind an already-open conversation.
-        if (activeCordId) { loadCordMessages().then(() => {
+        if (activeCordId) { loadCordMessages().then(async () => {
           const latestMsg = cordMessagesCache.length > 0 ? cordMessagesCache[cordMessagesCache.length - 1].created_at : null;
-          setCordLastRead(activeCordId, latestMsg);
+          await setCordLastRead(activeCordId, latestMsg);
           updateCordNotificationBadge();
           renderCordViewBody();
         }); }
@@ -266,19 +266,49 @@ import {
     }
 
     // --- Cords header notification bubble ---
-    // "Unread" is tracked as a last-read timestamp per cord, in localStorage
-    // under the current user's id — same convention as every other "seen"
-    // tracker in this app (getSeenRecordBadgeIds, getSeenStudyContentIds
-    // above), rather than a new DB column, since all it needs to answer is
-    // "how many messages came in since I last opened this cord on this
-    // device." A cord with no recorded last-read time (never opened) counts
-    // every message not sent by you as unread, same as a fresh inbox would.
-    export function getCordLastReadMap() {
+    // "Unread" is tracked as a last-read timestamp per cord, in
+    // profiles.cord_last_read (a jsonb object of cord_id -> ISO timestamp),
+    // NOT localStorage -- it used to be localStorage-only, but this app is
+    // designed to be opened as a downloaded local file as much as a hosted
+    // one, and browsers can treat two separately-downloaded copies of the
+    // same local HTML file as two entirely different origins, each with its
+    // own empty localStorage. That meant the bubble would silently reset to
+    // "everything is unread again" every time someone updated to a
+    // freshly-downloaded copy of the app -- not a one-time migration
+    // hiccup, a recurring one on every update. Tying this to the user's
+    // actual account instead fixes it for good, at the cost of one real,
+    // one-time reset the first time a given user loads this version (their
+    // old localStorage-based read state has no way to carry over).
+    //
+    // One-time setup: this column needs to exist before "last read"
+    // tracking will work. Run once in the SQL editor:
+    //
+    //   alter table profiles add column if not exists cord_last_read jsonb not null default '{}'::jsonb;
+    //
+    // A cord with no recorded last-read time (never opened) counts every
+    // message not sent by you as unread, same as a fresh inbox would.
+    // Cached in memory after the first fetch each session (same reasoning
+    // as shared/records.js's getSeenRecordBadgeIds) so a burst of calls
+    // doesn't each hit the database, and every write updates this cache
+    // immediately so a read right after a write never waits on a round-trip.
+    let cachedCordLastReadMap = null;
+    let cordLastReadMapFetchedForUserId = null;
+
+    export async function getCordLastReadMap() {
       if (!currentUser) return {};
+      if (cachedCordLastReadMap && cordLastReadMapFetchedForUserId === currentUser.id) {
+        return cachedCordLastReadMap;
+      }
       try {
-        const raw = localStorage.getItem(`cordLastRead_${currentUser.id}`);
-        return raw ? JSON.parse(raw) : {};
-      } catch (e) { return {}; }
+        const { data, error } = await profilesTable.select('cord_last_read').eq('id', currentUser.id).maybeSingle();
+        if (error) { console.error('Error loading cord last-read map:', error.message); return {}; }
+        cachedCordLastReadMap = (data && data.cord_last_read && typeof data.cord_last_read === 'object') ? data.cord_last_read : {};
+        cordLastReadMapFetchedForUserId = currentUser.id;
+        return cachedCordLastReadMap;
+      } catch (e) {
+        console.error('Error loading cord last-read map:', e.message);
+        return {};
+      }
     }
 
     // atIso lets a caller mark "read up through" the timestamp of the newest
@@ -286,13 +316,18 @@ import {
     // safer than the wall-clock in case this device's clock and the
     // database's are ever slightly out of step. Falls back to now when no
     // timestamp is given (e.g. there were no messages at all to read).
-    export function setCordLastRead(cordId, atIso) {
+    export async function setCordLastRead(cordId, atIso) {
       if (!currentUser) return;
+      const map = await getCordLastReadMap();
+      map[cordId] = atIso || new Date().toISOString();
+      cachedCordLastReadMap = map;
+      cordLastReadMapFetchedForUserId = currentUser.id;
       try {
-        const map = getCordLastReadMap();
-        map[cordId] = atIso || new Date().toISOString();
-        localStorage.setItem(`cordLastRead_${currentUser.id}`, JSON.stringify(map));
-      } catch (e) {}
+        const { error } = await profilesTable.update({ cord_last_read: map }).eq('id', currentUser.id);
+        if (error) console.error('Error saving cord last-read map:', error.message);
+      } catch (e) {
+        console.error('Error saving cord last-read map:', e.message);
+      }
     }
 
     // Fetches every message across all of the user's (accepted) cords in one
@@ -314,7 +349,7 @@ import {
         .in('cord_id', cordIds);
       if (error) { console.error('Error loading cord messages for unread count:', error.message); return; }
 
-      const lastRead = getCordLastReadMap();
+      const lastRead = await getCordLastReadMap();
       const unreadCount = (data || []).filter(m => {
         if (m.sender_id === currentUser.id) return false;
         const readAt = lastRead[m.cord_id];
@@ -433,7 +468,7 @@ import {
       // Read "through" the newest message just fetched (falling back to now
       // for an empty thread) — see setCordLastRead's comment.
       const latestMsg = cordMessagesCache.length > 0 ? cordMessagesCache[cordMessagesCache.length - 1].created_at : null;
-      setCordLastRead(cordId, latestMsg);
+      await setCordLastRead(cordId, latestMsg);
       updateCordNotificationBadge();
       renderCordViewBody();
     }

@@ -854,7 +854,7 @@ export {
         // So the Records header bubble reflects anything achieved last session even
         // before the user opens the Records page this session.
         await loadUserRecords();
-        updateRecordsNotificationBadge();
+        await updateRecordsNotificationBadge();
 
         // Same idea for the Cords header bubble — reflects unread messages from
         // before this session even if the user hasn't opened Cords yet.
@@ -992,7 +992,7 @@ export {
       // clear the cache and repaint the bubble now rather than leaving the former
       // user's count showing until someone happens to reopen Records.
       clearUserRecordsMap();
-      updateRecordsNotificationBadge();
+      await updateRecordsNotificationBadge();
       const recordsGrid = document.getElementById('record-badges-grid');
       if (recordsGrid) recordsGrid.innerHTML = '';
 

@@ -4974,28 +4974,45 @@ ${titlesToImport.join(", ")}`)) return;
       userRecordsMap = {};
     }
   }
-  function getSeenRecordBadgeIds() {
+  var cachedSeenRecordBadgeIds = null;
+  var seenRecordBadgeIdsFetchedForUserId = null;
+  async function getSeenRecordBadgeIds() {
     if (!currentUser) return [];
+    if (cachedSeenRecordBadgeIds && seenRecordBadgeIdsFetchedForUserId === currentUser.id) {
+      return cachedSeenRecordBadgeIds;
+    }
     try {
-      const raw = localStorage.getItem(`recordsSeenBadges_${currentUser.id}`);
-      return raw ? JSON.parse(raw) : [];
+      const { data, error } = await profilesTable.select("seen_record_badge_ids").eq("id", currentUser.id).maybeSingle();
+      if (error) {
+        console.error("Error loading seen record badges:", error.message);
+        return [];
+      }
+      cachedSeenRecordBadgeIds = data && Array.isArray(data.seen_record_badge_ids) ? data.seen_record_badge_ids : [];
+      seenRecordBadgeIdsFetchedForUserId = currentUser.id;
+      return cachedSeenRecordBadgeIds;
     } catch (e) {
+      console.error("Error loading seen record badges:", e.message);
       return [];
     }
   }
-  function markRecordBadgesSeen() {
+  async function markRecordBadgesSeen() {
     if (!currentUser) return;
+    const ids = Object.keys(userRecordsMap);
+    cachedSeenRecordBadgeIds = ids;
+    seenRecordBadgeIdsFetchedForUserId = currentUser.id;
     try {
-      localStorage.setItem(`recordsSeenBadges_${currentUser.id}`, JSON.stringify(Object.keys(userRecordsMap)));
+      const { error } = await profilesTable.update({ seen_record_badge_ids: ids }).eq("id", currentUser.id);
+      if (error) console.error("Error saving seen record badges:", error.message);
     } catch (e) {
+      console.error("Error saving seen record badges:", e.message);
     }
     updateRecordsNotificationBadge();
   }
-  function updateRecordsNotificationBadge() {
+  async function updateRecordsNotificationBadge() {
     const badgeEl = document.getElementById("records-notification-badge");
     if (!badgeEl) return;
     const achievedIds = Object.keys(userRecordsMap);
-    const seenIds = new Set(getSeenRecordBadgeIds());
+    const seenIds = new Set(await getSeenRecordBadgeIds());
     const newCount = achievedIds.filter((id) => !seenIds.has(id)).length;
     if (newCount > 0) {
       badgeEl.innerText = newCount;
@@ -5025,7 +5042,7 @@ ${titlesToImport.join(", ")}`)) return;
         }
       }
       await loadUserRecords();
-      updateRecordsNotificationBadge();
+      await updateRecordsNotificationBadge();
       return true;
     } catch (e) {
       console.error("Error awarding record:", e.message);
@@ -5048,7 +5065,7 @@ ${titlesToImport.join(", ")}`)) return;
         return false;
       }
       await loadUserRecords();
-      updateRecordsNotificationBadge();
+      await updateRecordsNotificationBadge();
       return true;
     } catch (e) {
       console.error("Error awarding one-time record:", e.message);
@@ -5767,7 +5784,7 @@ ${titlesToImport.join(", ")}`)) return;
     document.getElementById("record-admin-form").style.display = "none";
     await Promise.all([loadRecordBadges(), loadUserRecords()]);
     renderRecordBadgesGrid();
-    markRecordBadgesSeen();
+    await markRecordBadgesSeen();
   }
 
   // shared/twBibleCourse.js
@@ -8495,9 +8512,9 @@ ${url}`;
     loadCordData();
     if (!cordPollTimer) cordPollTimer = setInterval(() => {
       if (activeCordId) {
-        loadCordMessages().then(() => {
+        loadCordMessages().then(async () => {
           const latestMsg = cordMessagesCache.length > 0 ? cordMessagesCache[cordMessagesCache.length - 1].created_at : null;
-          setCordLastRead(activeCordId, latestMsg);
+          await setCordLastRead(activeCordId, latestMsg);
           updateCordNotificationBadge();
           renderCordViewBody();
         });
@@ -8523,22 +8540,38 @@ ${url}`;
     }
     return d.toLocaleDateString(void 0, { month: "short", day: "numeric" });
   }
-  function getCordLastReadMap() {
+  var cachedCordLastReadMap = null;
+  var cordLastReadMapFetchedForUserId = null;
+  async function getCordLastReadMap() {
     if (!currentUser) return {};
+    if (cachedCordLastReadMap && cordLastReadMapFetchedForUserId === currentUser.id) {
+      return cachedCordLastReadMap;
+    }
     try {
-      const raw = localStorage.getItem(`cordLastRead_${currentUser.id}`);
-      return raw ? JSON.parse(raw) : {};
+      const { data, error } = await profilesTable.select("cord_last_read").eq("id", currentUser.id).maybeSingle();
+      if (error) {
+        console.error("Error loading cord last-read map:", error.message);
+        return {};
+      }
+      cachedCordLastReadMap = data && data.cord_last_read && typeof data.cord_last_read === "object" ? data.cord_last_read : {};
+      cordLastReadMapFetchedForUserId = currentUser.id;
+      return cachedCordLastReadMap;
     } catch (e) {
+      console.error("Error loading cord last-read map:", e.message);
       return {};
     }
   }
-  function setCordLastRead(cordId, atIso) {
+  async function setCordLastRead(cordId, atIso) {
     if (!currentUser) return;
+    const map = await getCordLastReadMap();
+    map[cordId] = atIso || (/* @__PURE__ */ new Date()).toISOString();
+    cachedCordLastReadMap = map;
+    cordLastReadMapFetchedForUserId = currentUser.id;
     try {
-      const map = getCordLastReadMap();
-      map[cordId] = atIso || (/* @__PURE__ */ new Date()).toISOString();
-      localStorage.setItem(`cordLastRead_${currentUser.id}`, JSON.stringify(map));
+      const { error } = await profilesTable.update({ cord_last_read: map }).eq("id", currentUser.id);
+      if (error) console.error("Error saving cord last-read map:", error.message);
     } catch (e) {
+      console.error("Error saving cord last-read map:", e.message);
     }
   }
   async function updateCordNotificationBadge() {
@@ -8554,7 +8587,7 @@ ${url}`;
       console.error("Error loading cord messages for unread count:", error.message);
       return;
     }
-    const lastRead = getCordLastReadMap();
+    const lastRead = await getCordLastReadMap();
     const unreadCount = (data || []).filter((m) => {
       if (m.sender_id === currentUser.id) return false;
       const readAt = lastRead[m.cord_id];
@@ -8651,7 +8684,7 @@ ${url}`;
     activeCordId = cordId;
     await loadCordMessages();
     const latestMsg = cordMessagesCache.length > 0 ? cordMessagesCache[cordMessagesCache.length - 1].created_at : null;
-    setCordLastRead(cordId, latestMsg);
+    await setCordLastRead(cordId, latestMsg);
     updateCordNotificationBadge();
     renderCordViewBody();
   }
@@ -9285,7 +9318,7 @@ ${url}`;
       await fetchUserMarginNotes();
       checkMarginNotesCountBadges();
       await loadUserRecords();
-      updateRecordsNotificationBadge();
+      await updateRecordsNotificationBadge();
       await loadCordData();
       if (appHasInitialized) {
         await loadReadingSchedule();
@@ -9364,7 +9397,7 @@ ${url}`;
       processLoadedVerses(chapterTitleEl.value, translationEl.value);
     }
     clearUserRecordsMap();
-    updateRecordsNotificationBadge();
+    await updateRecordsNotificationBadge();
     const recordsGrid = document.getElementById("record-badges-grid");
     if (recordsGrid) recordsGrid.innerHTML = "";
     const marginsContainer = document.getElementById("mymargins-print-area");

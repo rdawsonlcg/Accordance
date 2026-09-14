@@ -38,7 +38,7 @@
 // load-order hazard a cross-module version of the same pattern would.)
 // ============================================================================
 
-import { createTableAccessor, fetchAllRows, readingSchedulesTable, recordsTable, userResourceClicksTable } from '../core/db.js';
+import { createTableAccessor, fetchAllRows, readingSchedulesTable, recordsTable, userResourceClicksTable, profilesTable } from '../core/db.js';
 import { getBibleStudyBookConfig, getSessionType } from './byTheBook.js';
 import { twBibleCourseData, markTWLessonComplete } from './twBibleCourse.js';
 import {
@@ -126,22 +126,63 @@ import {
     // --- Records header notification bubble ---
     // Same purple-circle/white-number style used everywhere else in the app (.nav-badge),
     // showing how many achieved badges the user hasn't looked at on the Records page yet.
-    // "Seen" state is tracked per-user in localStorage, keyed by record_badge_id.
-    export function getSeenRecordBadgeIds() {
+    //
+    // "Seen" state lives in profiles.seen_record_badge_ids (a jsonb array of
+    // badge ids), NOT localStorage — it used to be localStorage-only, but
+    // this app is designed to be opened as a downloaded local file as much
+    // as a hosted one, and browsers can treat two separately-downloaded
+    // copies of the same local HTML file as two entirely different origins,
+    // each with its own empty localStorage. That meant the bubble would
+    // silently reset to "everything is new again" every time someone
+    // updated to a freshly-downloaded copy of the app -- not a one-time
+    // migration hiccup, a recurring one on every update. Tying this to the
+    // user's actual account instead fixes it for good, at the cost of one
+    // real, one-time reset the first time a given user loads this version
+    // (their old localStorage-based seen state has no way to carry over).
+    //
+    // One-time setup: this column needs to exist before "seen" tracking
+    // will work. Run once in the SQL editor:
+    //
+    //   alter table profiles add column if not exists seen_record_badge_ids jsonb not null default '[]'::jsonb;
+    //
+    // Cached in memory after the first fetch each session (fetchedSeenRecordBadgeIds
+    // below) so a burst of calls (e.g. right after several badges are
+    // checked at once) doesn't each hit the database — every write updates
+    // this cache immediately too, so a read right after a write never needs
+    // to wait on a round-trip to see its own update.
+    let cachedSeenRecordBadgeIds = null;
+    let seenRecordBadgeIdsFetchedForUserId = null;
+
+    export async function getSeenRecordBadgeIds() {
       if (!currentUser) return [];
+      if (cachedSeenRecordBadgeIds && seenRecordBadgeIdsFetchedForUserId === currentUser.id) {
+        return cachedSeenRecordBadgeIds;
+      }
       try {
-        const raw = localStorage.getItem(`recordsSeenBadges_${currentUser.id}`);
-        return raw ? JSON.parse(raw) : [];
-      } catch (e) { return []; }
+        const { data, error } = await profilesTable.select('seen_record_badge_ids').eq('id', currentUser.id).maybeSingle();
+        if (error) { console.error('Error loading seen record badges:', error.message); return []; }
+        cachedSeenRecordBadgeIds = (data && Array.isArray(data.seen_record_badge_ids)) ? data.seen_record_badge_ids : [];
+        seenRecordBadgeIdsFetchedForUserId = currentUser.id;
+        return cachedSeenRecordBadgeIds;
+      } catch (e) {
+        console.error('Error loading seen record badges:', e.message);
+        return [];
+      }
     }
 
     // Marks every badge currently achieved as "seen", clearing the bubble — called
     // whenever the user actually opens the Records page.
-    export function markRecordBadgesSeen() {
+    export async function markRecordBadgesSeen() {
       if (!currentUser) return;
+      const ids = Object.keys(userRecordsMap);
+      cachedSeenRecordBadgeIds = ids;
+      seenRecordBadgeIdsFetchedForUserId = currentUser.id;
       try {
-        localStorage.setItem(`recordsSeenBadges_${currentUser.id}`, JSON.stringify(Object.keys(userRecordsMap)));
-      } catch (e) {}
+        const { error } = await profilesTable.update({ seen_record_badge_ids: ids }).eq('id', currentUser.id);
+        if (error) console.error('Error saving seen record badges:', error.message);
+      } catch (e) {
+        console.error('Error saving seen record badges:', e.message);
+      }
       updateRecordsNotificationBadge();
     }
 
@@ -149,11 +190,11 @@ import {
     // icon's bubble. Call this any time userRecordsMap changes (login, or right after a
     // badge is newly awarded) so the bubble stays accurate even if the user never opens
     // the Records page that session.
-    export function updateRecordsNotificationBadge() {
+    export async function updateRecordsNotificationBadge() {
       const badgeEl = document.getElementById('records-notification-badge');
       if (!badgeEl) return;
       const achievedIds = Object.keys(userRecordsMap);
-      const seenIds = new Set(getSeenRecordBadgeIds());
+      const seenIds = new Set(await getSeenRecordBadgeIds());
       const newCount = achievedIds.filter(id => !seenIds.has(id)).length;
       if (newCount > 0) { badgeEl.innerText = newCount; badgeEl.style.display = 'flex'; }
       else badgeEl.style.display = 'none';
@@ -182,7 +223,7 @@ import {
           if (insErr) { console.error('Error inserting record:', insErr.message); return false; }
         }
         await loadUserRecords();
-        updateRecordsNotificationBadge();
+        await updateRecordsNotificationBadge();
         return true;
       } catch (e) {
         console.error('Error awarding record:', e.message);
@@ -208,7 +249,7 @@ import {
         const { error: insErr } = await recordsTable.insert({ user_id: currentUser.id, record_badge_id: badgeId, count: 1, first_achieved_at: nowIso, last_achieved_at: nowIso });
         if (insErr) { console.error('Error inserting one-time record:', insErr.message); return false; }
         await loadUserRecords();
-        updateRecordsNotificationBadge();
+        await updateRecordsNotificationBadge();
         return true;
       } catch (e) {
         console.error('Error awarding one-time record:', e.message);
@@ -1067,7 +1108,7 @@ import {
 
       await Promise.all([loadRecordBadges(), loadUserRecords()]);
       renderRecordBadgesGrid();
-      markRecordBadgesSeen(); // clears the header bubble now that the user's looking at them
+      await markRecordBadgesSeen(); // clears the header bubble now that the user's looking at them
     }
 
     export function closeRecordsView() {
