@@ -183,6 +183,17 @@ import { twBibleCourseData, markTWLessonComplete } from './twBibleCourse.js';
         if (!document.body.contains(iframe)) return; // hero closed/replaced while the API script was loading
         new YT.Player(iframe, {
           events: {
+            // Attaching the API to an iframe that's already autoplaying via
+            // its own URL parameter shouldn't affect its playback state,
+            // but explicitly forcing play (and re-muting, in case the API
+            // resets it) here removes any doubt -- if the previously-seen
+            // paused-state icon was there because attaching the API left
+            // this in a paused state some other way, this rules that out
+            // directly rather than leaving it to chance.
+            onReady: (e) => {
+              e.target.mute();
+              e.target.playVideo();
+            },
             onStateChange: (e) => {
               if (e.data === YT.PlayerState.ENDED) {
                 e.target.seekTo(0);

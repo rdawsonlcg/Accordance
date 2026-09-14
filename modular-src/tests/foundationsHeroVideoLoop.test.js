@@ -48,23 +48,31 @@ test('initFoundationsHeroVideoPreviewPlayer loops the video manually via onState
   // real YT.Player gets constructed against the real rendered iframe
   // (not some other element).
   let capturedOnStateChange = null;
+  let capturedOnReady = null;
   let seekToCalls = [];
   let playVideoCalls = 0;
+  let muteCalls = 0;
   window.YT = {
     PlayerState: { ENDED: 0 },
     Player: function (iframeOrId, options) {
       const targetIframe = typeof iframeOrId === 'string' ? window.document.getElementById(iframeOrId) : iframeOrId;
       assert.strictEqual(targetIframe, window.document.getElementById('hero-iframe'), 'the player should attach to the real, already-rendered hero iframe');
       capturedOnStateChange = options.events.onStateChange;
+      capturedOnReady = options.events.onReady;
     },
   };
 
   window.initFoundationsHeroVideoPreviewPlayer();
-  // ensureYouTubeApiLoaded's fast path (window.YT already present) resolves
-  // via a real Promise -- let that microtask actually run before checking.
   await new Promise(resolve => setImmediate(resolve));
 
   assert.ok(capturedOnStateChange, 'expected a YT.Player to have been constructed with an onStateChange handler');
+  assert.ok(capturedOnReady, 'expected a YT.Player to have been constructed with an onReady handler');
+
+  // onReady should force play (and re-mute) -- ruling out attaching the API
+  // itself leaving the preview in a paused state some other way.
+  capturedOnReady({ target: { mute: () => muteCalls++, playVideo: () => playVideoCalls++ } });
+  assert.strictEqual(muteCalls, 1, 'onReady should explicitly (re-)mute the player');
+  assert.strictEqual(playVideoCalls, 1, 'onReady should explicitly force playback, ruling out the API attachment itself leaving this paused');
 
   const fakeEndedEvent = {
     data: 0, // YT.PlayerState.ENDED
@@ -73,5 +81,5 @@ test('initFoundationsHeroVideoPreviewPlayer loops the video manually via onState
   capturedOnStateChange(fakeEndedEvent);
 
   assert.deepStrictEqual(seekToCalls, [0], 'the video ending should seek back to the start');
-  assert.strictEqual(playVideoCalls, 1, 'the video ending should play again -- this IS the loop, done manually instead of via the URL trick');
+  assert.strictEqual(playVideoCalls, 2, 'the video ending should play again -- this IS the loop, done manually instead of via the URL trick (2, not 1, since onReady already called playVideo once above)');
 });
