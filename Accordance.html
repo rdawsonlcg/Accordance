@@ -243,10 +243,11 @@
     .book-admin-item-card { border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--bg-color); padding: 12px; margin-bottom: 10px; font-family: 'Plus Jakarta Sans', sans-serif; }
     .book-admin-item-card .book-admin-field-row { margin-bottom: 10px; }
     .book-admin-item-card .book-admin-field-row:last-child { margin-bottom: 0; }
-    .session-drag-card { cursor: grab; transition: border-color 0.15s, box-shadow 0.15s; }
-    .session-drag-card.dragging { opacity: 0.4; cursor: grabbing; }
+    .session-drag-card { transition: border-color 0.15s, box-shadow 0.15s; }
+    .session-drag-card.dragging { opacity: 0.4; }
     .session-drag-card.drag-over { border-color: var(--primary-color); box-shadow: 0 0 0 2px var(--primary-color) inset; }
-    .session-drag-handle { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; font-weight: 700; margin-bottom: 10px; user-select: none; }
+    .session-drag-handle { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; font-weight: 700; margin-bottom: 10px; user-select: none; cursor: grab; }
+    .session-drag-handle:active { cursor: grabbing; }
     .session-drag-handle svg { flex-shrink: 0; }
 
     /* Records view */
@@ -2463,6 +2464,10 @@ var __App = (() => {
     let draggedIndex = null;
     return {
       dragStart(event, idx) {
+        if (!event.target.closest(`.session-drag-handle`)) {
+          event.preventDefault();
+          return;
+        }
         draggedIndex = idx;
         event.dataTransfer.effectAllowed = "move";
         try {

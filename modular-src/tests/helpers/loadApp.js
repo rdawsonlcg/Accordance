@@ -108,7 +108,20 @@ async function loadApp({ html = '', extraExportNames = [], extraSource = '', sup
   // every time, and a test checking "did this actually get remembered"
   // would misleadingly look like a real behavior bug instead of a missing
   // origin.
-  const dom = new JSDOM(`<!DOCTYPE html><body>${html}</body>`, { runScripts: 'outside-only', url: 'http://localhost/' });
+  // runScripts: 'dangerously', not 'outside-only' -- discovered the hard way:
+  // 'outside-only' lets window.eval() below run our own bundle, but does NOT
+  // compile inline onclick="..." HTML attributes into real event handlers
+  // when markup is set via innerHTML (button.onclick stays typeof "object",
+  // not "function", and a real .click() silently does nothing). That let an
+  // actual bug (11 admin functions imported into app.js but never added to
+  // its window-export list) pass tests that called the functions directly
+  // instead of actually clicking the rendered button -- the tests were
+  // correct that the function worked when called directly, they just never
+  // exercised the real click path that a user (and a real browser) actually
+  // use. 'dangerously' is safe here specifically because every HTML fixture
+  // in this test suite is one this project wrote itself, not third-party
+  // content -- there is nothing untrusted for it to run.
+  const dom = new JSDOM(`<!DOCTYPE html><body>${html}</body>`, { runScripts: 'dangerously', url: 'http://localhost/' });
   const window = dom.window;
 
   const { client, calls } = createSupabaseMock(supabaseOverrides);

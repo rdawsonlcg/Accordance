@@ -61,6 +61,11 @@ test('By the Book admin session drag-and-drop reorder works (cross-module into s
 
   const fakeDragEvent = {
     dataTransfer: { setData() {}, dropEffect: null },
+    // A plain object standing in for the drag handle -- closest() returning
+    // itself (truthy) simulates "this drag started on .session-drag-handle",
+    // which shared/adminUtils.js's dragStart now specifically requires
+    // (see tests/adminDragReorder.test.js for the real bug this enforces).
+    target: { closest: () => ({}) },
     currentTarget: { classList: { add() {}, remove() {} } },
     preventDefault() {},
   };
