@@ -119,3 +119,33 @@ test('isTWLessonUnlocked treats a quiz-less, video-less lesson as satisfied even
 
   assert.strictEqual(window.isTWLessonUnlocked(mod, 1), true, 'lesson 2 should be unlocked even though lesson 1 (text-only) has no tracked completion yet');
 });
+
+test('a module only unlocks once every lesson in the PREVIOUS module is complete', async () => {
+  const { window } = await loadApp({
+    html: '<div id="tw-course-detail-panel"></div><div id="tw-course-content" style="display:none"></div>',
+    extraExportNames: [
+      ...testExports.twBibleCourse, 'isTWModuleUnlocked', 'openTWModule', 'toggleTWLesson',
+      '__setTwBibleCourseDataForTest',
+    ],
+    extraSource: `import { __setTwBibleCourseDataForTest } from './shared/twBibleCourse.js';`,
+  });
+
+  window.__setTwBibleCourseDataForTest([
+    { id: 'm1', title: 'Module 1', lessons: [
+      { id: 'm1l1', title: 'Text only', video: [], quizzes: [] },
+      { id: 'm1l2', title: 'Also text only', video: [], quizzes: [] },
+    ]},
+    { id: 'm2', title: 'Module 2', lessons: [
+      { id: 'm2l1', title: 'Lesson', video: [], quizzes: [] },
+    ]},
+  ]);
+  Object.keys(window.twCourseProgress).forEach(k => delete window.twCourseProgress[k]);
+
+  assert.strictEqual(window.isTWModuleUnlocked(1), false, 'module 2 should be locked before module 1 is finished');
+
+  window.openTWModule('m1');
+  window.toggleTWLesson(0); // completes m1l1 (text-only auto-completes on open)
+  window.toggleTWLesson(1); // completes m1l2
+
+  assert.strictEqual(window.isTWModuleUnlocked(1), true, 'module 2 should unlock once every lesson in module 1 is complete');
+});
