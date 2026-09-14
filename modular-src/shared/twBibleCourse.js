@@ -215,14 +215,30 @@ import {
       }
     }
 
+    // A module is "done" once every lesson that HAS a Knowledge Check
+    // (lesson.quizzes.length > 0) has had it answered correctly. Lessons
+    // with no Knowledge Check aren't part of this test at all -- there's
+    // nothing to check, so they don't gate completion either way. A module
+    // with no lessons yet (still being built by an admin) is never "done".
+    // Kept as one shared helper rather than repeating this filter in every
+    // place that needs to know "is this module finished" -- getTWCourseTotals,
+    // isTWModuleUnlocked, markTWLessonComplete, and the module list's own
+    // rendering all call this instead of each recomputing it slightly
+    // differently.
+    export function isTWModuleFullyComplete(mod) {
+      if (!mod || !mod.lessons || mod.lessons.length === 0) return false;
+      const quizLessons = mod.lessons.filter(l => l.quizzes && l.quizzes.length > 0);
+      return quizLessons.every(l => twCourseProgress[l.id]);
+    }
+
     // Counts MODULES (the "Lessons N" entries in the module list), not the
     // individual Sections inside each one — a module counts as done once
-    // every one of its Sections is complete.
+    // every one of its Knowledge Checks is complete (see isTWModuleFullyComplete).
     export function getTWCourseTotals() {
       let total = 0, completed = 0;
       twBibleCourseData.forEach(mod => {
         total++;
-        if (mod.lessons.length > 0 && mod.lessons.every(l => twCourseProgress[l.id])) completed++;
+        if (isTWModuleFullyComplete(mod)) completed++;
       });
       return { total, completed };
     }
@@ -242,7 +258,7 @@ import {
       if (idx <= 0) return true;
       const prev = twBibleCourseData[idx - 1];
       if (!prev || prev.lessons.length === 0) return true;
-      return prev.lessons.every(l => twCourseProgress[l.id]);
+      return isTWModuleFullyComplete(prev);
     }
 
     export function isTWModuleUnlockedById(moduleId) {
@@ -250,22 +266,14 @@ import {
       return idx === -1 ? false : isTWModuleUnlocked(idx);
     }
 
-    // Same idea, one level down: lessons within a module unlock one at a time too,
-    // so the whole course reads as a single sequential path start to finish.
-    // Same admin bypass as isTWModuleUnlocked above.
+    // Sections within an unlocked module are always open -- only MODULES
+    // lock in sequence (see isTWModuleUnlocked above). This function is
+    // kept (rather than removed and every call site updated to drop it)
+    // so the "is this lesson reachable" check stays in exactly one place;
+    // if that ever needs to become conditional again, only this one
+    // function needs to change.
     export function isTWLessonUnlocked(mod, lessonIdx) {
-      if (currentUser && currentUser.isAdmin) return true;
-      if (lessonIdx <= 0) return true;
-      const prevLesson = mod.lessons[lessonIdx - 1];
-      if (!prevLesson) return true;
-      // A lesson with no video and no quiz has nothing to actually
-      // "complete" -- treating it as satisfied here too (not just at the
-      // point where it's opened, in toggleTWLesson) means this heals on
-      // its own for anyone who already opened such a lesson before this
-      // fix existed, rather than requiring them to re-open it.
-      if ((!prevLesson.video || prevLesson.video.filter(v => v.url).length === 0) &&
-          (!prevLesson.quizzes || prevLesson.quizzes.length === 0)) return true;
-      return !!twCourseProgress[prevLesson.id];
+      return true;
     }
 
     // The ONLY way a lesson completes now — called when its Knowledge Check
@@ -285,10 +293,10 @@ import {
       twCourseProgress[lesson.id] = true;
       await saveTWLessonProgress(lesson.id);
 
-      const modDone = mod.lessons.length > 0 && mod.lessons.every(l => twCourseProgress[l.id]);
+      const modDone = isTWModuleFullyComplete(mod);
       if (modDone) {
         await checkTWModuleCompletionBadges(mod.id);
-        const courseDone = twBibleCourseData.every(m => m.lessons.length > 0 && m.lessons.every(l => twCourseProgress[l.id]));
+        const courseDone = twBibleCourseData.every(m => isTWModuleFullyComplete(m));
         if (courseDone) {
           await checkTWCourseCompletionBadges();
           maybeShowTWCourseCompletionModal();
@@ -349,9 +357,15 @@ export function maybeShowTWCourseCompletionModal() {
         <div class="tw-module-list">`;
 
       twBibleCourseData.forEach((mod, idx) => {
-        const modTotal = mod.lessons.length;
-        const modCompleted = mod.lessons.filter(l => twCourseProgress[l.id]).length;
-        const isComplete = modTotal > 0 && modCompleted === modTotal;
+        const quizLessons = mod.lessons.filter(l => l.quizzes && l.quizzes.length > 0);
+        const quizCompleted = quizLessons.filter(l => twCourseProgress[l.id]).length;
+        const isComplete = isTWModuleFullyComplete(mod);
+        // A module with no Knowledge Checks at all has nothing to count as
+        // a fraction -- showing "0/0" would read as broken, not finished,
+        // so this falls back to a plain lesson count instead in that case.
+        const metaText = quizLessons.length > 0
+          ? `${quizCompleted}/${quizLessons.length} knowledge checks`
+          : `${mod.lessons.length} section${mod.lessons.length === 1 ? '' : 's'}`;
         const unlocked = isTWModuleUnlocked(idx);
         const safeId = mod.id.replace(/'/g, "\\'");
         html += `
@@ -360,7 +374,7 @@ export function maybeShowTWCourseCompletionModal() {
               <span class="tw-module-index">${isComplete ? TW_CHECK_SVG : (idx + 1)}</span>
               <div style="min-width:0;">
                 <div class="tw-module-title">${(mod.title || '').replace(/</g, '&lt;')}</div>
-                <div class="tw-module-meta">${modCompleted}/${modTotal}</div>
+                <div class="tw-module-meta">${metaText}</div>
               </div>
             </div>
             ${unlocked

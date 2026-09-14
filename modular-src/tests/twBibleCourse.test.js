@@ -37,7 +37,10 @@ test('completing a TW lesson saves progress and awards a matching badge', async 
   });
 
   window.__setCurrentUserForTest({ id: 'user-1', role: 'subscriber' });
-  window.__setTwBibleCourseDataForTest([{ id: 'm1', lessons: [{ id: 'l1' }, { id: 'l2' }] }]);
+  window.__setTwBibleCourseDataForTest([{ id: 'm1', lessons: [
+    { id: 'l1', quizzes: [{ question: 'Q1?', options: ['A', 'B'], correctIndex: 0 }] },
+    { id: 'l2', quizzes: [{ question: 'Q2?', options: ['A', 'B'], correctIndex: 0 }] },
+  ] }]);
   window.__setTwCourseProgressForTest({});
   window.__setRecordBadgesListForTest([
     { id: 'badge1', trigger_type: 'tw_module_completed', trigger_config: { module_key: 'm1' } },
@@ -50,8 +53,13 @@ test('completing a TW lesson saves progress and awards a matching badge', async 
   assert.strictEqual(progressUpsert.payload.user_id, 'user-1');
   assert.strictEqual(progressUpsert.payload.lesson_id, 'l1');
 
-  // Only lesson l1 of the module is complete so far (l2 still isn't) — no
-  // module-completion badge should be awarded yet.
+  // Only lesson l1's knowledge check is answered so far (l2's still isn't)
+  // -- no module-completion badge should be awarded yet. Both lessons here
+  // have a real quiz specifically so this module doesn't count as
+  // vacuously "done" the moment it's created -- isTWModuleFullyComplete
+  // only requires knowledge-check-bearing lessons to be answered, so a
+  // module where neither lesson has one would complete immediately,
+  // which isn't the scenario this test is checking.
   const badgeInsertTooSoon = calls.find(c => c.op === 'insert' && c.table === 'records');
   assert.strictEqual(badgeInsertTooSoon, undefined, 'badge should not award until every lesson in the module is complete');
 

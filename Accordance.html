@@ -5862,11 +5862,16 @@ ${titlesToImport.join(", ")}`)) return;
       console.error("Error saving TW Bible Course progress:", e.message);
     }
   }
+  function isTWModuleFullyComplete(mod) {
+    if (!mod || !mod.lessons || mod.lessons.length === 0) return false;
+    const quizLessons = mod.lessons.filter((l) => l.quizzes && l.quizzes.length > 0);
+    return quizLessons.every((l) => twCourseProgress[l.id]);
+  }
   function getTWCourseTotals() {
     let total = 0, completed = 0;
     twBibleCourseData.forEach((mod) => {
       total++;
-      if (mod.lessons.length > 0 && mod.lessons.every((l) => twCourseProgress[l.id])) completed++;
+      if (isTWModuleFullyComplete(mod)) completed++;
     });
     return { total, completed };
   }
@@ -5875,17 +5880,14 @@ ${titlesToImport.join(", ")}`)) return;
     if (idx <= 0) return true;
     const prev = twBibleCourseData[idx - 1];
     if (!prev || prev.lessons.length === 0) return true;
-    return prev.lessons.every((l) => twCourseProgress[l.id]);
+    return isTWModuleFullyComplete(prev);
   }
   function isTWModuleUnlockedById(moduleId) {
     const idx = twBibleCourseData.findIndex((m) => m.id === moduleId);
     return idx === -1 ? false : isTWModuleUnlocked(idx);
   }
   function isTWLessonUnlocked(mod, lessonIdx) {
-    if (currentUser && currentUser.isAdmin) return true;
-    if (lessonIdx <= 0) return true;
-    const prevLesson = mod.lessons[lessonIdx - 1];
-    return prevLesson ? !!twCourseProgress[prevLesson.id] : true;
+    return true;
   }
   async function markTWLessonComplete(moduleId, lessonIndex) {
     const mod = twBibleCourseData.find((m) => m.id === moduleId);
@@ -5894,10 +5896,10 @@ ${titlesToImport.join(", ")}`)) return;
     if (!lesson || twCourseProgress[lesson.id]) return;
     twCourseProgress[lesson.id] = true;
     await saveTWLessonProgress(lesson.id);
-    const modDone = mod.lessons.length > 0 && mod.lessons.every((l) => twCourseProgress[l.id]);
+    const modDone = isTWModuleFullyComplete(mod);
     if (modDone) {
       await checkTWModuleCompletionBadges(mod.id);
-      const courseDone = twBibleCourseData.every((m) => m.lessons.length > 0 && m.lessons.every((l) => twCourseProgress[l.id]));
+      const courseDone = twBibleCourseData.every((m) => isTWModuleFullyComplete(m));
       if (courseDone) {
         await checkTWCourseCompletionBadges();
         maybeShowTWCourseCompletionModal();
@@ -5941,9 +5943,10 @@ ${titlesToImport.join(", ")}`)) return;
         </div>
         <div class="tw-module-list">`;
     twBibleCourseData.forEach((mod, idx) => {
-      const modTotal = mod.lessons.length;
-      const modCompleted = mod.lessons.filter((l) => twCourseProgress[l.id]).length;
-      const isComplete = modTotal > 0 && modCompleted === modTotal;
+      const quizLessons = mod.lessons.filter((l) => l.quizzes && l.quizzes.length > 0);
+      const quizCompleted = quizLessons.filter((l) => twCourseProgress[l.id]).length;
+      const isComplete = isTWModuleFullyComplete(mod);
+      const metaText = quizLessons.length > 0 ? `${quizCompleted}/${quizLessons.length} knowledge checks` : `${mod.lessons.length} section${mod.lessons.length === 1 ? "" : "s"}`;
       const unlocked = isTWModuleUnlocked(idx);
       const safeId = mod.id.replace(/'/g, "\\'");
       html += `
@@ -5952,7 +5955,7 @@ ${titlesToImport.join(", ")}`)) return;
               <span class="tw-module-index">${isComplete ? TW_CHECK_SVG : idx + 1}</span>
               <div style="min-width:0;">
                 <div class="tw-module-title">${(mod.title || "").replace(/</g, "&lt;")}</div>
-                <div class="tw-module-meta">${modCompleted}/${modTotal}</div>
+                <div class="tw-module-meta">${metaText}</div>
               </div>
             </div>
             ${unlocked ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted); flex-shrink:0;"><polyline points="9 6 15 12 9 18"></polyline></svg>' : `<span class="tw-module-lock-icon">${TW_LOCK_SVG}</span>`}
@@ -6170,6 +6173,14 @@ ${titlesToImport.join(", ")}`)) return;
     openTWLessonIndex = openTWLessonIndex === idx ? null : idx;
     twOpenMediaKeys.clear();
     delete twInlineKcIndex[`${activeTWModuleId}:${idx}`];
+    if (openTWLessonIndex === idx) {
+      const mod = twBibleCourseData.find((m) => m.id === activeTWModuleId);
+      const lesson = mod && mod.lessons[idx];
+      if (lesson && (!lesson.video || lesson.video.filter((v) => v.url).length === 0) && (!lesson.quizzes || lesson.quizzes.length === 0)) {
+        markTWLessonComplete(activeTWModuleId, idx);
+        return;
+      }
+    }
     renderTWModuleDetailPanel();
   }
   function openTWLessonVideo(moduleId, lessonIdx, startVIdx) {
@@ -7144,6 +7155,7 @@ ${titlesToImport.join(", ")}`)) return;
           showFsvKnowledgeCheck(lesson.quizzes, ctx, 0);
           return;
         }
+        if (lesson) markTWLessonComplete(ctx.moduleId, ctx.lessonIndex);
       } else if (ctx && ctx.type === "foundations_session") {
         const item = foundationsList.find((i) => i.dbId === ctx.classId);
         const session = item && (item.sessions || [])[ctx.sessionIndex];
