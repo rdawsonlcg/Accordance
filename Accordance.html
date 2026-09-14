@@ -2263,9 +2263,11 @@ var __App = (() => {
     removeCordUsernameChip: () => removeCordUsernameChip,
     removeFoundationsAdminAudioRow: () => removeFoundationsAdminAudioRow,
     removeFoundationsAdminResourceRow: () => removeFoundationsAdminResourceRow,
+    removeFoundationsAdminSessionQuiz: () => removeFoundationsAdminSessionQuiz,
     removeFoundationsAdminSessionRow: () => removeFoundationsAdminSessionRow,
     removeFoundationsAdminVideoRow: () => removeFoundationsAdminVideoRow,
     removeTWCourseAdminAudioRow: () => removeTWCourseAdminAudioRow,
+    removeTWCourseAdminLessonQuiz: () => removeTWCourseAdminLessonQuiz,
     removeTWCourseAdminLessonRow: () => removeTWCourseAdminLessonRow,
     removeTWCourseAdminResourceRow: () => removeTWCourseAdminResourceRow,
     removeTWCourseAdminVideoRow: () => removeTWCourseAdminVideoRow,
@@ -2294,7 +2296,10 @@ var __App = (() => {
     sendCordThreadMessage: () => sendCordThreadMessage,
     sendShareToCord: () => sendShareToCord,
     setCurrentPlanViewDayNumber: () => setCurrentPlanViewDayNumber,
+    setFoundationsAdminQuizCorrect: () => setFoundationsAdminQuizCorrect,
+    setFoundationsAdminSessionQuizCorrect: () => setFoundationsAdminSessionQuizCorrect,
     setHeaderIconSelected: () => setHeaderIconSelected,
+    setTWCourseAdminQuizCorrect: () => setTWCourseAdminQuizCorrect,
     shareBookSession: () => shareBookSession,
     shareFoundationsClass: () => shareFoundationsClass,
     shareFoundationsSession: () => shareFoundationsSession,
@@ -2335,8 +2340,12 @@ var __App = (() => {
     updateBookAdminSessionField: () => updateBookAdminSessionField,
     updateFoundationsAdminAudioField: () => updateFoundationsAdminAudioField,
     updateFoundationsAdminHeroVideoValue: () => updateFoundationsAdminHeroVideoValue,
+    updateFoundationsAdminQuizField: () => updateFoundationsAdminQuizField,
+    updateFoundationsAdminQuizOption: () => updateFoundationsAdminQuizOption,
     updateFoundationsAdminResourceField: () => updateFoundationsAdminResourceField,
     updateFoundationsAdminSessionField: () => updateFoundationsAdminSessionField,
+    updateFoundationsAdminSessionQuizField: () => updateFoundationsAdminSessionQuizField,
+    updateFoundationsAdminSessionQuizOption: () => updateFoundationsAdminSessionQuizOption,
     updateFoundationsAdminVideoField: () => updateFoundationsAdminVideoField,
     updateProgress: () => updateProgress,
     updateRecordAdminBadgePreview: () => updateRecordAdminBadgePreview,
@@ -2345,6 +2354,8 @@ var __App = (() => {
     updateTWCourseAdminAudioField: () => updateTWCourseAdminAudioField,
     updateTWCourseAdminHeroVideoValue: () => updateTWCourseAdminHeroVideoValue,
     updateTWCourseAdminLessonField: () => updateTWCourseAdminLessonField,
+    updateTWCourseAdminQuizField: () => updateTWCourseAdminQuizField,
+    updateTWCourseAdminQuizOption: () => updateTWCourseAdminQuizOption,
     updateTWCourseAdminResourceField: () => updateTWCourseAdminResourceField,
     updateTWCourseAdminVideoField: () => updateTWCourseAdminVideoField
   });
@@ -4738,6 +4749,21 @@ ${titlesToImport.join(", ")}`)) return;
     video.quiz = video.quiz ? null : { question: "", options: ["", "", "", ""], correctIndex: 0, explanation: "" };
     renderFoundationsAdminSessionRows();
   }
+  function updateFoundationsAdminQuizField(sessionIdx, videoIdx, field, value) {
+    const video = foundationsAdminSessionsState[sessionIdx] && foundationsAdminSessionsState[sessionIdx].video[videoIdx];
+    if (!video || !video.quiz) return;
+    video.quiz[field] = value;
+  }
+  function updateFoundationsAdminQuizOption(sessionIdx, videoIdx, optIdx, value) {
+    const video = foundationsAdminSessionsState[sessionIdx] && foundationsAdminSessionsState[sessionIdx].video[videoIdx];
+    if (!video || !video.quiz) return;
+    video.quiz.options[optIdx] = value;
+  }
+  function setFoundationsAdminQuizCorrect(sessionIdx, videoIdx, optIdx) {
+    const video = foundationsAdminSessionsState[sessionIdx] && foundationsAdminSessionsState[sessionIdx].video[videoIdx];
+    if (!video || !video.quiz) return;
+    video.quiz.correctIndex = optIdx;
+  }
   function renderFoundationsAdminQuizEditor(sIdx, vIdx, quiz) {
     return renderAdminQuizEditorBlock({
       idxA: sIdx,
@@ -4758,6 +4784,19 @@ ${titlesToImport.join(", ")}`)) return;
   function addFoundationsAdminSessionQuiz(sessionIdx) {
     foundationsSessionQuizController.add(sessionIdx);
     renderFoundationsAdminSessionRows();
+  }
+  function removeFoundationsAdminSessionQuiz(sessionIdx, quizIdx) {
+    foundationsSessionQuizController.remove(sessionIdx, quizIdx);
+    renderFoundationsAdminSessionRows();
+  }
+  function updateFoundationsAdminSessionQuizField(sessionIdx, quizIdx, field, value) {
+    foundationsSessionQuizController.updateField(sessionIdx, quizIdx, field, value);
+  }
+  function updateFoundationsAdminSessionQuizOption(sessionIdx, quizIdx, optIdx, value) {
+    foundationsSessionQuizController.updateOption(sessionIdx, quizIdx, optIdx, value);
+  }
+  function setFoundationsAdminSessionQuizCorrect(sessionIdx, quizIdx, optIdx) {
+    foundationsSessionQuizController.setCorrect(sessionIdx, quizIdx, optIdx);
   }
   function renderFoundationsAdminSessionQuizEditor(sIdx, qIdx, quiz) {
     return renderAdminQuizEditorBlock({
@@ -6483,6 +6522,19 @@ ${titlesToImport.join(", ")}`)) return;
   function addTWCourseAdminLessonQuiz(lessonIdx) {
     twLessonQuizController.add(lessonIdx);
     renderTWCourseAdminLessonRows();
+  }
+  function removeTWCourseAdminLessonQuiz(lessonIdx, quizIdx) {
+    twLessonQuizController.remove(lessonIdx, quizIdx);
+    renderTWCourseAdminLessonRows();
+  }
+  function updateTWCourseAdminQuizField(lessonIdx, quizIdx, field, value) {
+    twLessonQuizController.updateField(lessonIdx, quizIdx, field, value);
+  }
+  function updateTWCourseAdminQuizOption(lessonIdx, quizIdx, optIdx, value) {
+    twLessonQuizController.updateOption(lessonIdx, quizIdx, optIdx, value);
+  }
+  function setTWCourseAdminQuizCorrect(lessonIdx, quizIdx, optIdx) {
+    twLessonQuizController.setCorrect(lessonIdx, quizIdx, optIdx);
   }
   function renderTWCourseAdminQuizEditor(lIdx, qIdx, quiz) {
     return renderAdminQuizEditorBlock({

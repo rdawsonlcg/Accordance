@@ -1773,3 +1773,18 @@ import {
       updateStudyNotificationBadges();
       openFoundationsAdminView();
     }
+
+// ----------------------------------------------------------------------------
+// Test utilities only — used by tests/ (see tests/testExports.js), never
+// exported into the shipped build. Same reasoning as
+// shared/twBibleCourse.js's own test-utilities section: foundationsAdminSessionsState
+// is an ordinary imported binding from any other file's point of view, and
+// several admin-form functions REASSIGN it wholesale rather than mutating
+// the existing array's contents, so both a setter and a getter are needed
+// (a getter because build.js's window-flattening only copies each export's
+// value onto `window` once, at bundle-eval time -- reading
+// window.foundationsAdminSessionsState after a reassignment would silently
+// show the stale array from before it happened, not the real one).
+// ----------------------------------------------------------------------------
+export function __setFoundationsAdminSessionsStateForTest(state) { foundationsAdminSessionsState = state; }
+export function __getFoundationsAdminSessionsStateForTest() { return foundationsAdminSessionsState; }
