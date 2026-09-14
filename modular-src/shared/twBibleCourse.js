@@ -45,7 +45,7 @@ import {
 } from './adminUtils.js';
 import {
   isDirectVideoUrl, toYouTubeEmbedUrl, toYouTubeMutedPreviewEmbedUrl, openFsvPlayer,
-  formatSecondsToTimeInput, parseTimeToSeconds
+  formatSecondsToTimeInput, parseTimeToSeconds, initFoundationsHeroVideoPreviewPlayer
 } from './videoPlayer.js';
 import {
   normalizeFoundationsMediaList, foundationsMediaItemAccordionHtml,
@@ -493,7 +493,7 @@ export function maybeShowTWCourseCompletionModal() {
         <div class="foundations-sessions-list">${lessonsHtml}</div>
       `;
 
-      if (heroPreviewEmbedUrl) { sizeFoundationsHeroVideoBg(); scheduleFoundationsHeroVideoBgRecheck(); }
+      if (heroPreviewEmbedUrl) { sizeFoundationsHeroVideoBg(); scheduleFoundationsHeroVideoBgRecheck(); initFoundationsHeroVideoPreviewPlayer(); }
     }
 
     export function twLessonAccordionHtml(mod, lesson, idx) {

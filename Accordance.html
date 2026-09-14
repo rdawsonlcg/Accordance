@@ -1227,7 +1227,7 @@
             <path d="M15 13.5 L19 22 L14.5 20.3 L12.5 23 L12.5 14 Z"></path>
             <circle cx="12" cy="9" r="7" fill="#ffffff"></circle>
           </svg>
-          <span id="records-notification-badge" class="nav-badge"></span>
+          <span id="records-notification-badge" class="nav-badge-inverse"></span>
         </button>
 
         <button id="cords-header-btn" class="header-icon-btn" onclick="openCordView()" style="background: transparent; border: none; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative;" title="Cords">
@@ -2076,7 +2076,10 @@
           <div id="tw-course-admin-lessons-list"></div>
 
           <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
-            <button type="button" class="page-btn" id="tw-course-admin-delete-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fca5a5;" onclick="deleteTWCourseAdminModule()">Delete this module</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button type="button" class="page-btn" id="tw-course-admin-delete-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fca5a5;" onclick="deleteTWCourseAdminModule()">Delete this module</button>
+              <button type="button" class="page-btn" id="tw-course-admin-duplicate-btn" onclick="duplicateTWCourseAdminModule()">Duplicate this module</button>
+            </div>
             <button type="button" class="btn" style="width:auto;" onclick="saveTWCourseAdminModule()">Save</button>
           </div>
         </div>
@@ -2170,6 +2173,7 @@ var __App = (() => {
     deleteResourceFromTab: () => deleteResourceFromTab,
     deleteTWCourseAdminModule: () => deleteTWCourseAdminModule,
     duplicateTWCourseAdminLessonRow: () => duplicateTWCourseAdminLessonRow,
+    duplicateTWCourseAdminModule: () => duplicateTWCourseAdminModule,
     ensureLoggedInFor: () => ensureLoggedInFor,
     escapeHtml: () => escapeHtml,
     fixMojibakeText: () => fixMojibakeText,
@@ -2259,9 +2263,11 @@ var __App = (() => {
     removeCordUsernameChip: () => removeCordUsernameChip,
     removeFoundationsAdminAudioRow: () => removeFoundationsAdminAudioRow,
     removeFoundationsAdminResourceRow: () => removeFoundationsAdminResourceRow,
+    removeFoundationsAdminSessionQuiz: () => removeFoundationsAdminSessionQuiz,
     removeFoundationsAdminSessionRow: () => removeFoundationsAdminSessionRow,
     removeFoundationsAdminVideoRow: () => removeFoundationsAdminVideoRow,
     removeTWCourseAdminAudioRow: () => removeTWCourseAdminAudioRow,
+    removeTWCourseAdminLessonQuiz: () => removeTWCourseAdminLessonQuiz,
     removeTWCourseAdminLessonRow: () => removeTWCourseAdminLessonRow,
     removeTWCourseAdminResourceRow: () => removeTWCourseAdminResourceRow,
     removeTWCourseAdminVideoRow: () => removeTWCourseAdminVideoRow,
@@ -2290,7 +2296,10 @@ var __App = (() => {
     sendCordThreadMessage: () => sendCordThreadMessage,
     sendShareToCord: () => sendShareToCord,
     setCurrentPlanViewDayNumber: () => setCurrentPlanViewDayNumber,
+    setFoundationsAdminQuizCorrect: () => setFoundationsAdminQuizCorrect,
+    setFoundationsAdminSessionQuizCorrect: () => setFoundationsAdminSessionQuizCorrect,
     setHeaderIconSelected: () => setHeaderIconSelected,
+    setTWCourseAdminQuizCorrect: () => setTWCourseAdminQuizCorrect,
     shareBookSession: () => shareBookSession,
     shareFoundationsClass: () => shareFoundationsClass,
     shareFoundationsSession: () => shareFoundationsSession,
@@ -2331,8 +2340,12 @@ var __App = (() => {
     updateBookAdminSessionField: () => updateBookAdminSessionField,
     updateFoundationsAdminAudioField: () => updateFoundationsAdminAudioField,
     updateFoundationsAdminHeroVideoValue: () => updateFoundationsAdminHeroVideoValue,
+    updateFoundationsAdminQuizField: () => updateFoundationsAdminQuizField,
+    updateFoundationsAdminQuizOption: () => updateFoundationsAdminQuizOption,
     updateFoundationsAdminResourceField: () => updateFoundationsAdminResourceField,
     updateFoundationsAdminSessionField: () => updateFoundationsAdminSessionField,
+    updateFoundationsAdminSessionQuizField: () => updateFoundationsAdminSessionQuizField,
+    updateFoundationsAdminSessionQuizOption: () => updateFoundationsAdminSessionQuizOption,
     updateFoundationsAdminVideoField: () => updateFoundationsAdminVideoField,
     updateProgress: () => updateProgress,
     updateRecordAdminBadgePreview: () => updateRecordAdminBadgePreview,
@@ -2341,6 +2354,8 @@ var __App = (() => {
     updateTWCourseAdminAudioField: () => updateTWCourseAdminAudioField,
     updateTWCourseAdminHeroVideoValue: () => updateTWCourseAdminHeroVideoValue,
     updateTWCourseAdminLessonField: () => updateTWCourseAdminLessonField,
+    updateTWCourseAdminQuizField: () => updateTWCourseAdminQuizField,
+    updateTWCourseAdminQuizOption: () => updateTWCourseAdminQuizOption,
     updateTWCourseAdminResourceField: () => updateTWCourseAdminResourceField,
     updateTWCourseAdminVideoField: () => updateTWCourseAdminVideoField
   });
@@ -4040,7 +4055,11 @@ ${titlesToImport.join(", ")}`)) return;
         <div class="foundations-sessions-list">${sessionsHtml}</div>
         ${foundationsSuggestionsHtml(item)}
       `;
-    if (heroPreviewEmbedUrl) sizeFoundationsHeroVideoBg();
+    if (heroPreviewEmbedUrl) {
+      sizeFoundationsHeroVideoBg();
+      scheduleFoundationsHeroVideoBgRecheck();
+      initFoundationsHeroVideoPreviewPlayer();
+    }
   }
   function sizeFoundationsHeroVideoBg() {
     const wrap = document.querySelector(".foundations-hero-video-bg");
@@ -4060,6 +4079,11 @@ ${titlesToImport.join(", ")}`)) return;
     iframe.style.width = `${Math.ceil(iw * 1.15)}px`;
     iframe.style.height = `${Math.ceil(ih * 1.15)}px`;
     iframe.style.transform = "translate(-50%, -50%)";
+  }
+  function scheduleFoundationsHeroVideoBgRecheck() {
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(sizeFoundationsHeroVideoBg);
+    }
   }
   window.addEventListener("resize", () => sizeFoundationsHeroVideoBg());
   function foundationsSuggestionsHtml(item) {
@@ -4734,6 +4758,21 @@ ${titlesToImport.join(", ")}`)) return;
     video.quiz = video.quiz ? null : { question: "", options: ["", "", "", ""], correctIndex: 0, explanation: "" };
     renderFoundationsAdminSessionRows();
   }
+  function updateFoundationsAdminQuizField(sessionIdx, videoIdx, field, value) {
+    const video = foundationsAdminSessionsState[sessionIdx] && foundationsAdminSessionsState[sessionIdx].video[videoIdx];
+    if (!video || !video.quiz) return;
+    video.quiz[field] = value;
+  }
+  function updateFoundationsAdminQuizOption(sessionIdx, videoIdx, optIdx, value) {
+    const video = foundationsAdminSessionsState[sessionIdx] && foundationsAdminSessionsState[sessionIdx].video[videoIdx];
+    if (!video || !video.quiz) return;
+    video.quiz.options[optIdx] = value;
+  }
+  function setFoundationsAdminQuizCorrect(sessionIdx, videoIdx, optIdx) {
+    const video = foundationsAdminSessionsState[sessionIdx] && foundationsAdminSessionsState[sessionIdx].video[videoIdx];
+    if (!video || !video.quiz) return;
+    video.quiz.correctIndex = optIdx;
+  }
   function renderFoundationsAdminQuizEditor(sIdx, vIdx, quiz) {
     return renderAdminQuizEditorBlock({
       idxA: sIdx,
@@ -4754,6 +4793,19 @@ ${titlesToImport.join(", ")}`)) return;
   function addFoundationsAdminSessionQuiz(sessionIdx) {
     foundationsSessionQuizController.add(sessionIdx);
     renderFoundationsAdminSessionRows();
+  }
+  function removeFoundationsAdminSessionQuiz(sessionIdx, quizIdx) {
+    foundationsSessionQuizController.remove(sessionIdx, quizIdx);
+    renderFoundationsAdminSessionRows();
+  }
+  function updateFoundationsAdminSessionQuizField(sessionIdx, quizIdx, field, value) {
+    foundationsSessionQuizController.updateField(sessionIdx, quizIdx, field, value);
+  }
+  function updateFoundationsAdminSessionQuizOption(sessionIdx, quizIdx, optIdx, value) {
+    foundationsSessionQuizController.updateOption(sessionIdx, quizIdx, optIdx, value);
+  }
+  function setFoundationsAdminSessionQuizCorrect(sessionIdx, quizIdx, optIdx) {
+    foundationsSessionQuizController.setCorrect(sessionIdx, quizIdx, optIdx);
   }
   function renderFoundationsAdminSessionQuizEditor(sIdx, qIdx, quiz) {
     return renderAdminQuizEditorBlock({
@@ -4970,28 +5022,45 @@ ${titlesToImport.join(", ")}`)) return;
       userRecordsMap = {};
     }
   }
-  function getSeenRecordBadgeIds() {
+  var cachedSeenRecordBadgeIds = null;
+  var seenRecordBadgeIdsFetchedForUserId = null;
+  async function getSeenRecordBadgeIds() {
     if (!currentUser) return [];
+    if (cachedSeenRecordBadgeIds && seenRecordBadgeIdsFetchedForUserId === currentUser.id) {
+      return cachedSeenRecordBadgeIds;
+    }
     try {
-      const raw = localStorage.getItem(`recordsSeenBadges_${currentUser.id}`);
-      return raw ? JSON.parse(raw) : [];
+      const { data, error } = await profilesTable.select("seen_record_badge_ids").eq("id", currentUser.id).maybeSingle();
+      if (error) {
+        console.error("Error loading seen record badges:", error.message);
+        return [];
+      }
+      cachedSeenRecordBadgeIds = data && Array.isArray(data.seen_record_badge_ids) ? data.seen_record_badge_ids : [];
+      seenRecordBadgeIdsFetchedForUserId = currentUser.id;
+      return cachedSeenRecordBadgeIds;
     } catch (e) {
+      console.error("Error loading seen record badges:", e.message);
       return [];
     }
   }
-  function markRecordBadgesSeen() {
+  async function markRecordBadgesSeen() {
     if (!currentUser) return;
+    const ids = Object.keys(userRecordsMap);
+    cachedSeenRecordBadgeIds = ids;
+    seenRecordBadgeIdsFetchedForUserId = currentUser.id;
     try {
-      localStorage.setItem(`recordsSeenBadges_${currentUser.id}`, JSON.stringify(Object.keys(userRecordsMap)));
+      const { error } = await profilesTable.update({ seen_record_badge_ids: ids }).eq("id", currentUser.id);
+      if (error) console.error("Error saving seen record badges:", error.message);
     } catch (e) {
+      console.error("Error saving seen record badges:", e.message);
     }
     updateRecordsNotificationBadge();
   }
-  function updateRecordsNotificationBadge() {
+  async function updateRecordsNotificationBadge() {
     const badgeEl = document.getElementById("records-notification-badge");
     if (!badgeEl) return;
     const achievedIds = Object.keys(userRecordsMap);
-    const seenIds = new Set(getSeenRecordBadgeIds());
+    const seenIds = new Set(await getSeenRecordBadgeIds());
     const newCount = achievedIds.filter((id) => !seenIds.has(id)).length;
     if (newCount > 0) {
       badgeEl.innerText = newCount;
@@ -5021,7 +5090,7 @@ ${titlesToImport.join(", ")}`)) return;
         }
       }
       await loadUserRecords();
-      updateRecordsNotificationBadge();
+      await updateRecordsNotificationBadge();
       return true;
     } catch (e) {
       console.error("Error awarding record:", e.message);
@@ -5044,7 +5113,7 @@ ${titlesToImport.join(", ")}`)) return;
         return false;
       }
       await loadUserRecords();
-      updateRecordsNotificationBadge();
+      await updateRecordsNotificationBadge();
       return true;
     } catch (e) {
       console.error("Error awarding one-time record:", e.message);
@@ -5763,7 +5832,7 @@ ${titlesToImport.join(", ")}`)) return;
     document.getElementById("record-admin-form").style.display = "none";
     await Promise.all([loadRecordBadges(), loadUserRecords()]);
     renderRecordBadgesGrid();
-    markRecordBadgesSeen();
+    await markRecordBadgesSeen();
   }
 
   // shared/twBibleCourse.js
@@ -5862,11 +5931,16 @@ ${titlesToImport.join(", ")}`)) return;
       console.error("Error saving TW Bible Course progress:", e.message);
     }
   }
+  function isTWModuleFullyComplete(mod) {
+    if (!mod || !mod.lessons || mod.lessons.length === 0) return false;
+    const quizLessons = mod.lessons.filter((l) => l.quizzes && l.quizzes.length > 0);
+    return quizLessons.every((l) => twCourseProgress[l.id]);
+  }
   function getTWCourseTotals() {
     let total = 0, completed = 0;
     twBibleCourseData.forEach((mod) => {
       total++;
-      if (mod.lessons.length > 0 && mod.lessons.every((l) => twCourseProgress[l.id])) completed++;
+      if (isTWModuleFullyComplete(mod)) completed++;
     });
     return { total, completed };
   }
@@ -5875,17 +5949,14 @@ ${titlesToImport.join(", ")}`)) return;
     if (idx <= 0) return true;
     const prev = twBibleCourseData[idx - 1];
     if (!prev || prev.lessons.length === 0) return true;
-    return prev.lessons.every((l) => twCourseProgress[l.id]);
+    return isTWModuleFullyComplete(prev);
   }
   function isTWModuleUnlockedById(moduleId) {
     const idx = twBibleCourseData.findIndex((m) => m.id === moduleId);
     return idx === -1 ? false : isTWModuleUnlocked(idx);
   }
   function isTWLessonUnlocked(mod, lessonIdx) {
-    if (currentUser && currentUser.isAdmin) return true;
-    if (lessonIdx <= 0) return true;
-    const prevLesson = mod.lessons[lessonIdx - 1];
-    return prevLesson ? !!twCourseProgress[prevLesson.id] : true;
+    return true;
   }
   async function markTWLessonComplete(moduleId, lessonIndex) {
     const mod = twBibleCourseData.find((m) => m.id === moduleId);
@@ -5894,10 +5965,10 @@ ${titlesToImport.join(", ")}`)) return;
     if (!lesson || twCourseProgress[lesson.id]) return;
     twCourseProgress[lesson.id] = true;
     await saveTWLessonProgress(lesson.id);
-    const modDone = mod.lessons.length > 0 && mod.lessons.every((l) => twCourseProgress[l.id]);
+    const modDone = isTWModuleFullyComplete(mod);
     if (modDone) {
       await checkTWModuleCompletionBadges(mod.id);
-      const courseDone = twBibleCourseData.every((m) => m.lessons.length > 0 && m.lessons.every((l) => twCourseProgress[l.id]));
+      const courseDone = twBibleCourseData.every((m) => isTWModuleFullyComplete(m));
       if (courseDone) {
         await checkTWCourseCompletionBadges();
         maybeShowTWCourseCompletionModal();
@@ -5941,9 +6012,10 @@ ${titlesToImport.join(", ")}`)) return;
         </div>
         <div class="tw-module-list">`;
     twBibleCourseData.forEach((mod, idx) => {
-      const modTotal = mod.lessons.length;
-      const modCompleted = mod.lessons.filter((l) => twCourseProgress[l.id]).length;
-      const isComplete = modTotal > 0 && modCompleted === modTotal;
+      const quizLessons = mod.lessons.filter((l) => l.quizzes && l.quizzes.length > 0);
+      const quizCompleted = quizLessons.filter((l) => twCourseProgress[l.id]).length;
+      const isComplete = isTWModuleFullyComplete(mod);
+      const metaText = quizLessons.length > 0 ? `${quizCompleted}/${quizLessons.length} knowledge checks` : `${mod.lessons.length} section${mod.lessons.length === 1 ? "" : "s"}`;
       const unlocked = isTWModuleUnlocked(idx);
       const safeId = mod.id.replace(/'/g, "\\'");
       html += `
@@ -5952,7 +6024,7 @@ ${titlesToImport.join(", ")}`)) return;
               <span class="tw-module-index">${isComplete ? TW_CHECK_SVG : idx + 1}</span>
               <div style="min-width:0;">
                 <div class="tw-module-title">${(mod.title || "").replace(/</g, "&lt;")}</div>
-                <div class="tw-module-meta">${modCompleted}/${modTotal}</div>
+                <div class="tw-module-meta">${metaText}</div>
               </div>
             </div>
             ${unlocked ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted); flex-shrink:0;"><polyline points="9 6 15 12 9 18"></polyline></svg>' : `<span class="tw-module-lock-icon">${TW_LOCK_SVG}</span>`}
@@ -6036,7 +6108,11 @@ ${titlesToImport.join(", ")}`)) return;
         <div class="foundations-lessons-heading">Sections</div>
         <div class="foundations-sessions-list">${lessonsHtml}</div>
       `;
-    if (heroPreviewEmbedUrl) sizeFoundationsHeroVideoBg();
+    if (heroPreviewEmbedUrl) {
+      sizeFoundationsHeroVideoBg();
+      scheduleFoundationsHeroVideoBgRecheck();
+      initFoundationsHeroVideoPreviewPlayer();
+    }
   }
   function twLessonAccordionHtml(mod, lesson, idx) {
     const isOpen = openTWLessonIndex === idx;
@@ -6170,6 +6246,14 @@ ${titlesToImport.join(", ")}`)) return;
     openTWLessonIndex = openTWLessonIndex === idx ? null : idx;
     twOpenMediaKeys.clear();
     delete twInlineKcIndex[`${activeTWModuleId}:${idx}`];
+    if (openTWLessonIndex === idx) {
+      const mod = twBibleCourseData.find((m) => m.id === activeTWModuleId);
+      const lesson = mod && mod.lessons[idx];
+      if (lesson && (!lesson.video || lesson.video.filter((v) => v.url).length === 0) && (!lesson.quizzes || lesson.quizzes.length === 0)) {
+        markTWLessonComplete(activeTWModuleId, idx);
+        return;
+      }
+    }
     renderTWModuleDetailPanel();
   }
   function openTWLessonVideo(moduleId, lessonIdx, startVIdx) {
@@ -6202,6 +6286,7 @@ ${titlesToImport.join(", ")}`)) return;
     const idVal = document.getElementById("tw-course-admin-select").value;
     const formEl = document.getElementById("tw-course-admin-form");
     const deleteBtn = document.getElementById("tw-course-admin-delete-btn");
+    const duplicateBtn = document.getElementById("tw-course-admin-duplicate-btn");
     formEl.style.display = "block";
     const mod = idVal ? twBibleCourseData.find((m) => m.id === idVal) : null;
     document.getElementById("tw-course-admin-title").value = mod ? mod.title : "";
@@ -6228,6 +6313,7 @@ ${titlesToImport.join(", ")}`)) return;
     twCourseAdminHeroVideoValue = mod && mod.heroSessionIndex != null && mod.heroVideoIndex != null ? `${mod.heroSessionIndex}:${mod.heroVideoIndex}` : "";
     renderTWCourseAdminLessonRows();
     deleteBtn.style.display = mod && mod.dbId ? "inline-block" : "none";
+    duplicateBtn.style.display = mod ? "inline-block" : "none";
   }
   function populateTWCourseAdminHeroVideoSelect() {
     const select = document.getElementById("tw-course-admin-hero-video");
@@ -6450,6 +6536,19 @@ ${titlesToImport.join(", ")}`)) return;
     twLessonQuizController.add(lessonIdx);
     renderTWCourseAdminLessonRows();
   }
+  function removeTWCourseAdminLessonQuiz(lessonIdx, quizIdx) {
+    twLessonQuizController.remove(lessonIdx, quizIdx);
+    renderTWCourseAdminLessonRows();
+  }
+  function updateTWCourseAdminQuizField(lessonIdx, quizIdx, field, value) {
+    twLessonQuizController.updateField(lessonIdx, quizIdx, field, value);
+  }
+  function updateTWCourseAdminQuizOption(lessonIdx, quizIdx, optIdx, value) {
+    twLessonQuizController.updateOption(lessonIdx, quizIdx, optIdx, value);
+  }
+  function setTWCourseAdminQuizCorrect(lessonIdx, quizIdx, optIdx) {
+    twLessonQuizController.setCorrect(lessonIdx, quizIdx, optIdx);
+  }
   function renderTWCourseAdminQuizEditor(lIdx, qIdx, quiz) {
     return renderAdminQuizEditorBlock({
       idxA: lIdx,
@@ -6604,6 +6703,28 @@ ${titlesToImport.join(", ")}`)) return;
     closeTWCourseAdminView();
     switchStudySubTab("course");
   }
+  function duplicateTWCourseAdminModule() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    const idVal = document.getElementById("tw-course-admin-select").value;
+    const mod = idVal ? twBibleCourseData.find((m) => m.id === idVal) : null;
+    if (!mod) return;
+    const select = document.getElementById("tw-course-admin-select");
+    select.value = "";
+    document.getElementById("tw-course-admin-form").style.display = "block";
+    document.getElementById("tw-course-admin-title").value = mod.title ? `${mod.title} (Copy)` : "Untitled Module (Copy)";
+    document.getElementById("tw-course-admin-order").value = twBibleCourseData.length ? Math.max(...twBibleCourseData.map((m) => m.orderIndex || 0)) + 1 : 0;
+    document.getElementById("tw-course-admin-presenter").value = mod.presenter || "";
+    document.getElementById("tw-course-admin-presenter-photo").value = mod.presenterPhotoUrl || "";
+    document.getElementById("tw-course-admin-thumbnail").value = mod.thumbnailUrl || "";
+    twCourseAdminLessonsState = mod.lessons.map((l) => {
+      const clone = JSON.parse(JSON.stringify(l));
+      clone.id = `lesson_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      return clone;
+    });
+    twCourseAdminHeroVideoValue = mod.heroSessionIndex != null && mod.heroVideoIndex != null ? `${mod.heroSessionIndex}:${mod.heroVideoIndex}` : "";
+    renderTWCourseAdminLessonRows();
+    document.getElementById("tw-course-admin-delete-btn").style.display = "none";
+  }
   async function deleteTWCourseAdminModule() {
     if (!currentUser || !currentUser.isAdmin) return;
     const idVal = document.getElementById("tw-course-admin-select").value;
@@ -6730,7 +6851,24 @@ ${titlesToImport.join(", ")}`)) return;
   function toYouTubeMutedPreviewEmbedUrl(url) {
     const videoId = getYouTubeVideoId(url);
     if (!videoId) return null;
-    return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&rel=0&modestbranding=1&playsinline=1&disablekb=1&iv_load_policy=3`;
+    return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1&disablekb=1&iv_load_policy=3&enablejsapi=1`;
+  }
+  function initFoundationsHeroVideoPreviewPlayer() {
+    const iframe = document.querySelector(".foundations-hero-video-bg iframe");
+    if (!iframe) return;
+    ensureYouTubeApiLoaded().then((YT) => {
+      if (!document.body.contains(iframe)) return;
+      new YT.Player(iframe, {
+        events: {
+          onStateChange: (e) => {
+            if (e.data === YT.PlayerState.ENDED) {
+              e.target.seekTo(0);
+              e.target.playVideo();
+            }
+          }
+        }
+      });
+    });
   }
   var activeMediaController2 = null;
   var miniPlayerWatcherId = null;
@@ -7144,6 +7282,7 @@ ${titlesToImport.join(", ")}`)) return;
           showFsvKnowledgeCheck(lesson.quizzes, ctx, 0);
           return;
         }
+        if (lesson) markTWLessonComplete(ctx.moduleId, ctx.lessonIndex);
       } else if (ctx && ctx.type === "foundations_session") {
         const item = foundationsList.find((i) => i.dbId === ctx.classId);
         const session = item && (item.sessions || [])[ctx.sessionIndex];
@@ -8455,9 +8594,9 @@ ${url}`;
     loadCordData();
     if (!cordPollTimer) cordPollTimer = setInterval(() => {
       if (activeCordId) {
-        loadCordMessages().then(() => {
+        loadCordMessages().then(async () => {
           const latestMsg = cordMessagesCache.length > 0 ? cordMessagesCache[cordMessagesCache.length - 1].created_at : null;
-          setCordLastRead(activeCordId, latestMsg);
+          await setCordLastRead(activeCordId, latestMsg);
           updateCordNotificationBadge();
           renderCordViewBody();
         });
@@ -8483,22 +8622,38 @@ ${url}`;
     }
     return d.toLocaleDateString(void 0, { month: "short", day: "numeric" });
   }
-  function getCordLastReadMap() {
+  var cachedCordLastReadMap = null;
+  var cordLastReadMapFetchedForUserId = null;
+  async function getCordLastReadMap() {
     if (!currentUser) return {};
+    if (cachedCordLastReadMap && cordLastReadMapFetchedForUserId === currentUser.id) {
+      return cachedCordLastReadMap;
+    }
     try {
-      const raw = localStorage.getItem(`cordLastRead_${currentUser.id}`);
-      return raw ? JSON.parse(raw) : {};
+      const { data, error } = await profilesTable.select("cord_last_read").eq("id", currentUser.id).maybeSingle();
+      if (error) {
+        console.error("Error loading cord last-read map:", error.message);
+        return {};
+      }
+      cachedCordLastReadMap = data && data.cord_last_read && typeof data.cord_last_read === "object" ? data.cord_last_read : {};
+      cordLastReadMapFetchedForUserId = currentUser.id;
+      return cachedCordLastReadMap;
     } catch (e) {
+      console.error("Error loading cord last-read map:", e.message);
       return {};
     }
   }
-  function setCordLastRead(cordId, atIso) {
+  async function setCordLastRead(cordId, atIso) {
     if (!currentUser) return;
+    const map = await getCordLastReadMap();
+    map[cordId] = atIso || (/* @__PURE__ */ new Date()).toISOString();
+    cachedCordLastReadMap = map;
+    cordLastReadMapFetchedForUserId = currentUser.id;
     try {
-      const map = getCordLastReadMap();
-      map[cordId] = atIso || (/* @__PURE__ */ new Date()).toISOString();
-      localStorage.setItem(`cordLastRead_${currentUser.id}`, JSON.stringify(map));
+      const { error } = await profilesTable.update({ cord_last_read: map }).eq("id", currentUser.id);
+      if (error) console.error("Error saving cord last-read map:", error.message);
     } catch (e) {
+      console.error("Error saving cord last-read map:", e.message);
     }
   }
   async function updateCordNotificationBadge() {
@@ -8514,7 +8669,7 @@ ${url}`;
       console.error("Error loading cord messages for unread count:", error.message);
       return;
     }
-    const lastRead = getCordLastReadMap();
+    const lastRead = await getCordLastReadMap();
     const unreadCount = (data || []).filter((m) => {
       if (m.sender_id === currentUser.id) return false;
       const readAt = lastRead[m.cord_id];
@@ -8611,7 +8766,7 @@ ${url}`;
     activeCordId = cordId;
     await loadCordMessages();
     const latestMsg = cordMessagesCache.length > 0 ? cordMessagesCache[cordMessagesCache.length - 1].created_at : null;
-    setCordLastRead(cordId, latestMsg);
+    await setCordLastRead(cordId, latestMsg);
     updateCordNotificationBadge();
     renderCordViewBody();
   }
@@ -9245,7 +9400,7 @@ ${url}`;
       await fetchUserMarginNotes();
       checkMarginNotesCountBadges();
       await loadUserRecords();
-      updateRecordsNotificationBadge();
+      await updateRecordsNotificationBadge();
       await loadCordData();
       if (appHasInitialized) {
         await loadReadingSchedule();
@@ -9324,7 +9479,7 @@ ${url}`;
       processLoadedVerses(chapterTitleEl.value, translationEl.value);
     }
     clearUserRecordsMap();
-    updateRecordsNotificationBadge();
+    await updateRecordsNotificationBadge();
     const recordsGrid = document.getElementById("record-badges-grid");
     if (recordsGrid) recordsGrid.innerHTML = "";
     const marginsContainer = document.getElementById("mymargins-print-area");

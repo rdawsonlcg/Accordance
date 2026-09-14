@@ -151,7 +151,47 @@ import { twBibleCourseData, markTWLessonComplete } from './twBibleCourse.js';
     export function toYouTubeMutedPreviewEmbedUrl(url) {
       const videoId = getYouTubeVideoId(url);
       if (!videoId) return null;
-      return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&rel=0&modestbranding=1&playsinline=1&disablekb=1&iv_load_policy=3`;
+      // No loop=1&playlist=<same id> here (the usual trick for looping a
+      // single embedded video) -- YouTube treats that as a real (if
+      // one-item) playlist, and can briefly show its own playlist
+      // previous/next navigation chrome over the video because of it,
+      // regardless of controls=0 (that parameter hides the normal player
+      // controls, not this separate playlist-navigation overlay). Since
+      // this preview is muted, autoplaying background decoration behind a
+      // pointer-events:none wrapper, not something a learner is meant to
+      // interact with at all, looping it manually instead via the real
+      // IFrame API's onStateChange event (see
+      // initFoundationsHeroVideoPreviewPlayer below) avoids the whole
+      // "playlist" concept, and the overlay it can trigger, entirely.
+      return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1&disablekb=1&iv_load_policy=3&enablejsapi=1`;
+    }
+
+    // Attaches the real YouTube IFrame API to an already-rendered hero
+    // preview <iframe> (built from the URL above) specifically so its
+    // looping can be done manually via onStateChange -- ended (state 0) ->
+    // seek back to 0 and play again -- rather than via the loop=1&playlist=
+    // URL trick, which is what actually caused the reported bug (YouTube's
+    // own playlist-navigation overlay showing prev/pause/next icons over
+    // the preview). Failing silently (no API, no matching iframe, or the
+    // hero having since closed) is fine here -- worst case, the preview
+    // just doesn't loop instead of erroring, and it still autoplayed once
+    // via the URL's own autoplay=1 regardless of whether this ever attaches.
+    export function initFoundationsHeroVideoPreviewPlayer() {
+      const iframe = document.querySelector('.foundations-hero-video-bg iframe');
+      if (!iframe) return;
+      ensureYouTubeApiLoaded().then(YT => {
+        if (!document.body.contains(iframe)) return; // hero closed/replaced while the API script was loading
+        new YT.Player(iframe, {
+          events: {
+            onStateChange: (e) => {
+              if (e.data === YT.PlayerState.ENDED) {
+                e.target.seekTo(0);
+                e.target.playVideo();
+              }
+            }
+          }
+        });
+      });
     }
 
     // ============================================================

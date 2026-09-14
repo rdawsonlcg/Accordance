@@ -34,7 +34,7 @@ import {
 } from './adminUtils.js';
 import {
   isDirectVideoUrl, toYouTubeEmbedUrl, toYouTubeMutedPreviewEmbedUrl, openFsvPlayer,
-  formatSecondsToTimeInput, parseTimeToSeconds
+  formatSecondsToTimeInput, parseTimeToSeconds, initFoundationsHeroVideoPreviewPlayer
 } from './videoPlayer.js';
 import {
   loadStudyPresenters, populateStudyPresenterDropdowns,
@@ -476,7 +476,7 @@ import {
         ${foundationsSuggestionsHtml(item)}
       `;
 
-      if (heroPreviewEmbedUrl) { sizeFoundationsHeroVideoBg(); scheduleFoundationsHeroVideoBgRecheck(); }
+      if (heroPreviewEmbedUrl) { sizeFoundationsHeroVideoBg(); scheduleFoundationsHeroVideoBgRecheck(); initFoundationsHeroVideoPreviewPlayer(); }
     }
 
     // Sizes the hero video preview's iframe to "cover" its box (crop to fill
