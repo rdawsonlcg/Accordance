@@ -1,30 +1,29 @@
-// tests/adminDragReorder.test.js — covers a real, plausible cause of a
-// reported bug ("I cannot drag and drop lesson sections to reorder them,"
-// on desktop): every admin drag-reorder card (TW lessons, Core-D sessions,
-// By the Book sessions) has its title field, content textarea, video/audio/
-// resource rows, and -- for TW/Core-D -- an entire Knowledge Check editor
-// with its own text fields and buttons, ALL living inside the same
-// draggable="true" container. The card's CSS put cursor:grab on the WHOLE
-// card, visually suggesting any part of it starts a drag -- but browsers
-// already refuse to start a native HTML5 drag from inside a focused text
-// input, textarea, or button, so most of that visible "grabbable" surface
-// never actually worked. Someone reasonably grabbing the card by its title
-// field, or blank space near a form row, would see nothing happen and
-// reasonably conclude the whole feature was broken -- while a real,
-// end-to-end simulated drag (see tests/quizEditorWiring.test.js's own
-// discovery of jsdom's onclick-compilation gap for the sibling bug this
-// session also found) that happens to start exactly on the small drag
-// handle would look completely fine, which is exactly why this one wasn't
-// caught by that same style of test alone.
+// tests/adminDragReorder.test.js — covers shared/adminUtils.js's
+// makeAdminDragReorder (used by TW lessons, Core-D sessions, and By the
+// Book sessions).
 //
-// Fixed by making makeAdminDragReorder's dragStart explicitly check that
-// the drag began on .session-drag-handle (event.target.closest(...)) and
-// cancel it otherwise, and moving the CSS's cursor:grab from the whole
-// card onto just the handle so the visual affordance now matches where a
-// drag actually works. This is a shared utility (shared/adminUtils.js), so
-// the fix applies to every screen using it, not just TW's lesson list --
-// only TW's is exercised directly below, since the underlying function is
-// identical for all three.
+// This file previously also tested a restriction added here: requiring a
+// drag to start specifically on .session-drag-handle, rather than
+// anywhere on the (fully draggable) card, since the card's own cursor:grab
+// styling visually suggested the whole thing was grabbable when browsers
+// already silently refuse to start a drag from inside a focused input/
+// textarea/button anyway. That restriction was REVERTED after shipping:
+// a user reported drag-and-drop stopped working ENTIRELY afterward --
+// including from the handle itself, and across all three screens that use
+// this shared function, in real Chrome, via the actual deployed site (not
+// a caching or extension issue -- both were specifically ruled out). This
+// could not be reproduced or caught here beforehand, because jsdom does
+// not implement real HTML5 drag events (no DragEvent, no DataTransfer) --
+// the most faithful test possible in this environment invokes the
+// compiled event handler directly with a constructed mock event, which
+// cannot surface whatever real-browser-specific issue actually broke this.
+// Given that blind spot, the honest, safe choice was to revert the
+// restriction rather than leave a real feature broken while trying to
+// prove a fix works in an environment that already failed to catch the
+// regression once. The UX issue the restriction was meant to solve (most
+// of the card's visible "grab" cursor being misleading) is still real and
+// still unsolved -- worth revisiting with an approach that doesn't touch
+// dragStart's own control flow, if this comes up again.
 
 const test = require('node:test');
 const assert = require('node:assert');
@@ -39,7 +38,7 @@ function mockDragEvent(target, currentTarget) {
   };
 }
 
-test('dragging from the handle actually reorders the lessons', async () => {
+test('dragging a card (starting from its handle) reorders the lessons', async () => {
   const { window } = await loadApp({
     html: '<div id="tw-course-admin-lessons-list"></div>',
     extraExportNames: ['addTWCourseAdminLessonRow', 'renderTWCourseAdminLessonRows', 'updateTWCourseAdminLessonField', '__getTwCourseAdminLessonsStateForTest'],
@@ -66,35 +65,5 @@ test('dragging from the handle actually reorders the lessons', async () => {
     JSON.parse(JSON.stringify(window.__getTwCourseAdminLessonsStateForTest().map(l => l.title))),
     ['Lesson B', 'Lesson C', 'Lesson A'],
     'dragging the first card onto the last position (starting from its handle) should move it to the end'
-  );
-});
-
-test('dragging from anywhere else on the card (e.g. the title field) does NOT reorder -- the bug this test guards against', async () => {
-  const { window } = await loadApp({
-    html: '<div id="tw-course-admin-lessons-list"></div>',
-    extraExportNames: ['addTWCourseAdminLessonRow', 'renderTWCourseAdminLessonRows', 'updateTWCourseAdminLessonField', '__getTwCourseAdminLessonsStateForTest'],
-    extraSource: `import { __getTwCourseAdminLessonsStateForTest } from './shared/twBibleCourse.js';`,
-  });
-
-  window.addTWCourseAdminLessonRow();
-  window.addTWCourseAdminLessonRow();
-  window.addTWCourseAdminLessonRow();
-  window.updateTWCourseAdminLessonField(0, 'title', 'Lesson A');
-  window.updateTWCourseAdminLessonField(1, 'title', 'Lesson B');
-  window.updateTWCourseAdminLessonField(2, 'title', 'Lesson C');
-  window.renderTWCourseAdminLessonRows();
-
-  const cards = window.document.querySelectorAll('.session-drag-card');
-  const titleInput = cards[0].querySelector('input[type="text"]');
-
-  cards[0].ondragstart(mockDragEvent(titleInput, cards[0]));
-  cards[2].ondragover(mockDragEvent(cards[2], cards[2]));
-  cards[2].ondrop(mockDragEvent(cards[2], cards[2]));
-  cards[0].ondragend(mockDragEvent(cards[0], cards[0]));
-
-  assert.deepStrictEqual(
-    JSON.parse(JSON.stringify(window.__getTwCourseAdminLessonsStateForTest().map(l => l.title))),
-    ['Lesson A', 'Lesson B', 'Lesson C'],
-    'a drag that did not start on the handle should be cancelled before it ever sets a dragged index, leaving the order untouched'
   );
 });

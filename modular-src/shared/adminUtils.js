@@ -35,23 +35,6 @@ export function makeAdminDragReorder(getState, renderFn, containerId) {
   let draggedIndex = null;
   return {
     dragStart(event, idx) {
-      // Only actually start a drag if it began on the small drag-handle
-      // (the grip icon + "Lesson N"/"Session N" label at the top of the
-      // card), not just anywhere on the card. The card's own CSS puts
-      // cursor:grab on the WHOLE card, which visually suggests any part of
-      // it can be dragged from -- but a card can be quite tall (title,
-      // content, video/audio/resource rows, and an entire Knowledge Check
-      // editor with its own text fields and buttons all live inside the
-      // same draggable element), and none of that visible surface actually
-      // reflects where a drag can genuinely be grabbed from. Browsers
-      // already refuse to start a drag from inside a focused text input or
-      // textarea, but everywhere ELSE on the card (blank padding, a label,
-      // the space between fields) would otherwise still incorrectly start
-      // one -- restricting it to the handle explicitly, rather than relying
-      // on that partial, easy-to-miss default, makes the one spot that
-      // actually works also the one place the interaction is intentionally
-      // offered from.
-      if (!event.target.closest(`.session-drag-handle`)) { event.preventDefault(); return; }
       draggedIndex = idx;
       event.dataTransfer.effectAllowed = 'move';
       try { event.dataTransfer.setData('text/plain', String(idx)); } catch (e) {}
