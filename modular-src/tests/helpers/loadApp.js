@@ -98,7 +98,17 @@ function createSupabaseMock(overrides = {}) {
 // `window`, same as testExports.js. `supabaseOverrides` is passed straight
 // through to createSupabaseMock.
 async function loadApp({ html = '', extraExportNames = [], extraSource = '', supabaseOverrides = {} } = {}) {
-  const dom = new JSDOM(`<!DOCTYPE html><body>${html}</body>`, { runScripts: 'outside-only' });
+  // A real URL matters here, not just cosmetically: jsdom treats a
+  // document with no URL as an opaque origin, where localStorage throws
+  // "localStorage is not available for opaque origins" rather than working.
+  // Several real functions (markRecordBadgesSeen/getSeenRecordBadgeIds,
+  // the Cords display-name cache) wrap their localStorage calls in a
+  // try/catch, so that throw is silently swallowed rather than surfacing
+  // as a test failure -- without this, those functions quietly no-op
+  // every time, and a test checking "did this actually get remembered"
+  // would misleadingly look like a real behavior bug instead of a missing
+  // origin.
+  const dom = new JSDOM(`<!DOCTYPE html><body>${html}</body>`, { runScripts: 'outside-only', url: 'http://localhost/' });
   const window = dom.window;
 
   const { client, calls } = createSupabaseMock(supabaseOverrides);
