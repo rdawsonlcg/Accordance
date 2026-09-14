@@ -735,6 +735,7 @@ export function maybeShowTWCourseCompletionModal() {
       const idVal = document.getElementById('tw-course-admin-select').value;
       const formEl = document.getElementById('tw-course-admin-form');
       const deleteBtn = document.getElementById('tw-course-admin-delete-btn');
+      const duplicateBtn = document.getElementById('tw-course-admin-duplicate-btn');
       formEl.style.display = 'block';
 
       const mod = idVal ? twBibleCourseData.find(m => m.id === idVal) : null;
@@ -774,6 +775,11 @@ export function maybeShowTWCourseCompletionModal() {
       // A hardcoded-only module (never saved to the DB, so it has no dbId) has
       // nothing to actually delete — only a DB-backed module can be removed here.
       deleteBtn.style.display = (mod && mod.dbId) ? 'inline-block' : 'none';
+      // Duplicating just copies what's on screen into a new, unsaved module --
+      // unlike deleting, it doesn't need the source to be DB-backed, so this
+      // shows for any real selection (hardcoded or saved), hidden only for
+      // "-- New Module --" itself, where there's nothing yet to copy from.
+      duplicateBtn.style.display = mod ? 'inline-block' : 'none';
     }
 
     // Rebuilds the Hero Video dropdown from whatever video rows currently exist
@@ -1231,6 +1237,55 @@ export function maybeShowTWCourseCompletionModal() {
       switchStudySubTab('course');
     }
 
+    // Clones every field of a module — title, presenter/photo/thumbnail,
+    // hero video pick, and every lesson (each with a fresh id, so its own
+    // learner-progress tracking never collides with the original's) — into
+    // the form as an unsaved NEW module, so an admin can start a similar
+    // module from a known-good one instead of rebuilding it lesson by
+    // lesson. Same philosophy as duplicateTWCourseAdminLessonRow above:
+    // this only populates the form, it doesn't save anything on its own —
+    // the admin reviews (and can freely edit) the copy before choosing to
+    // save it, same as they would for a module they typed from scratch.
+    //
+    // Works from either a hardcoded or a DB-saved source module (unlike
+    // deleteTWCourseAdminModule, which requires a dbId) — duplicating is
+    // just copying what's already on screen, not touching the source
+    // module's own database row at all.
+    export function duplicateTWCourseAdminModule() {
+      if (!currentUser || !currentUser.isAdmin) return;
+      const idVal = document.getElementById('tw-course-admin-select').value;
+      const mod = idVal ? twBibleCourseData.find(m => m.id === idVal) : null;
+      if (!mod) return;
+
+      const select = document.getElementById('tw-course-admin-select');
+      select.value = ''; // back to "-- New Module --" so Save creates a new row, not an overwrite
+      document.getElementById('tw-course-admin-form').style.display = 'block';
+
+      document.getElementById('tw-course-admin-title').value = mod.title ? `${mod.title} (Copy)` : 'Untitled Module (Copy)';
+      document.getElementById('tw-course-admin-order').value = twBibleCourseData.length
+        ? Math.max(...twBibleCourseData.map(m => m.orderIndex || 0)) + 1 : 0;
+      document.getElementById('tw-course-admin-presenter').value = mod.presenter || '';
+      document.getElementById('tw-course-admin-presenter-photo').value = mod.presenterPhotoUrl || '';
+      document.getElementById('tw-course-admin-thumbnail').value = mod.thumbnailUrl || '';
+
+      twCourseAdminLessonsState = mod.lessons.map(l => {
+        const clone = JSON.parse(JSON.stringify(l));
+        clone.id = `lesson_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        return clone;
+      });
+
+      // Hero video indices point at a POSITION in the lessons list (lesson
+      // index : video index within it), not at a lesson id -- since the
+      // clone keeps every lesson in the same order with the same video
+      // rows, the original module's pick is still valid to carry over as-is.
+      twCourseAdminHeroVideoValue = (mod.heroSessionIndex != null && mod.heroVideoIndex != null)
+        ? `${mod.heroSessionIndex}:${mod.heroVideoIndex}` : '';
+      renderTWCourseAdminLessonRows();
+
+      // This is now an unsaved new module -- nothing to delete yet.
+      document.getElementById('tw-course-admin-delete-btn').style.display = 'none';
+    }
+
     export async function deleteTWCourseAdminModule() {
       if (!currentUser || !currentUser.isAdmin) return;
       const idVal = document.getElementById('tw-course-admin-select').value;
@@ -1310,4 +1365,15 @@ export function maybeShowTWCourseCompletionModal() {
 // app, just for a testing need instead of a real caller's.
 // ----------------------------------------------------------------------------
 export function __setTwBibleCourseDataForTest(data) { twBibleCourseData = data; }
+export function __getTwBibleCourseDataForTest() { return twBibleCourseData; }
 export function __setTwCourseProgressForTest(progress) { twCourseProgress = progress; }
+// A getter, not a plain export of twCourseAdminLessonsState itself, for the
+// same reason shared/cords.js's __getCordPollTimerForTest and
+// shared/records.js's __getUserRecordsMapForTest exist: several admin-form
+// functions (duplicateTWCourseAdminModule, handleTWCourseAdminSelectChange)
+// REASSIGN this array wholesale rather than mutating the existing one's
+// contents, and build.js's Object.assign(window, __App) only copies each
+// export's value onto `window` once, at bundle-eval time -- reading
+// window.twCourseAdminLessonsState after one of those functions runs would
+// silently show the stale array from before it ran, not the real one.
+export function __getTwCourseAdminLessonsStateForTest() { return twCourseAdminLessonsState; }

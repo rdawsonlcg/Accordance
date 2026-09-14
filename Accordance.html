@@ -2076,7 +2076,10 @@
           <div id="tw-course-admin-lessons-list"></div>
 
           <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
-            <button type="button" class="page-btn" id="tw-course-admin-delete-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fca5a5;" onclick="deleteTWCourseAdminModule()">Delete this module</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button type="button" class="page-btn" id="tw-course-admin-delete-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fca5a5;" onclick="deleteTWCourseAdminModule()">Delete this module</button>
+              <button type="button" class="page-btn" id="tw-course-admin-duplicate-btn" onclick="duplicateTWCourseAdminModule()">Duplicate this module</button>
+            </div>
             <button type="button" class="btn" style="width:auto;" onclick="saveTWCourseAdminModule()">Save</button>
           </div>
         </div>
@@ -2170,6 +2173,7 @@ var __App = (() => {
     deleteResourceFromTab: () => deleteResourceFromTab,
     deleteTWCourseAdminModule: () => deleteTWCourseAdminModule,
     duplicateTWCourseAdminLessonRow: () => duplicateTWCourseAdminLessonRow,
+    duplicateTWCourseAdminModule: () => duplicateTWCourseAdminModule,
     ensureLoggedInFor: () => ensureLoggedInFor,
     escapeHtml: () => escapeHtml,
     fixMojibakeText: () => fixMojibakeText,
@@ -6213,6 +6217,7 @@ ${titlesToImport.join(", ")}`)) return;
     const idVal = document.getElementById("tw-course-admin-select").value;
     const formEl = document.getElementById("tw-course-admin-form");
     const deleteBtn = document.getElementById("tw-course-admin-delete-btn");
+    const duplicateBtn = document.getElementById("tw-course-admin-duplicate-btn");
     formEl.style.display = "block";
     const mod = idVal ? twBibleCourseData.find((m) => m.id === idVal) : null;
     document.getElementById("tw-course-admin-title").value = mod ? mod.title : "";
@@ -6239,6 +6244,7 @@ ${titlesToImport.join(", ")}`)) return;
     twCourseAdminHeroVideoValue = mod && mod.heroSessionIndex != null && mod.heroVideoIndex != null ? `${mod.heroSessionIndex}:${mod.heroVideoIndex}` : "";
     renderTWCourseAdminLessonRows();
     deleteBtn.style.display = mod && mod.dbId ? "inline-block" : "none";
+    duplicateBtn.style.display = mod ? "inline-block" : "none";
   }
   function populateTWCourseAdminHeroVideoSelect() {
     const select = document.getElementById("tw-course-admin-hero-video");
@@ -6614,6 +6620,28 @@ ${titlesToImport.join(", ")}`)) return;
     alert(hadNoDbModulesYet ? `Saved! "${saved.title}" is now live for everyone. Since this is the first module saved to the database, it now replaces the built-in default course \u2014 use "Import Existing Course Content" above if you'd like to bring the other built-in modules in too.` : `Saved! "${saved.title}" is now live for everyone.`);
     closeTWCourseAdminView();
     switchStudySubTab("course");
+  }
+  function duplicateTWCourseAdminModule() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    const idVal = document.getElementById("tw-course-admin-select").value;
+    const mod = idVal ? twBibleCourseData.find((m) => m.id === idVal) : null;
+    if (!mod) return;
+    const select = document.getElementById("tw-course-admin-select");
+    select.value = "";
+    document.getElementById("tw-course-admin-form").style.display = "block";
+    document.getElementById("tw-course-admin-title").value = mod.title ? `${mod.title} (Copy)` : "Untitled Module (Copy)";
+    document.getElementById("tw-course-admin-order").value = twBibleCourseData.length ? Math.max(...twBibleCourseData.map((m) => m.orderIndex || 0)) + 1 : 0;
+    document.getElementById("tw-course-admin-presenter").value = mod.presenter || "";
+    document.getElementById("tw-course-admin-presenter-photo").value = mod.presenterPhotoUrl || "";
+    document.getElementById("tw-course-admin-thumbnail").value = mod.thumbnailUrl || "";
+    twCourseAdminLessonsState = mod.lessons.map((l) => {
+      const clone = JSON.parse(JSON.stringify(l));
+      clone.id = `lesson_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      return clone;
+    });
+    twCourseAdminHeroVideoValue = mod.heroSessionIndex != null && mod.heroVideoIndex != null ? `${mod.heroSessionIndex}:${mod.heroVideoIndex}` : "";
+    renderTWCourseAdminLessonRows();
+    document.getElementById("tw-course-admin-delete-btn").style.display = "none";
   }
   async function deleteTWCourseAdminModule() {
     if (!currentUser || !currentUser.isAdmin) return;

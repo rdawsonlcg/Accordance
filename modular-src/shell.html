@@ -2076,7 +2076,10 @@
           <div id="tw-course-admin-lessons-list"></div>
 
           <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
-            <button type="button" class="page-btn" id="tw-course-admin-delete-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fca5a5;" onclick="deleteTWCourseAdminModule()">Delete this module</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button type="button" class="page-btn" id="tw-course-admin-delete-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fca5a5;" onclick="deleteTWCourseAdminModule()">Delete this module</button>
+              <button type="button" class="page-btn" id="tw-course-admin-duplicate-btn" onclick="duplicateTWCourseAdminModule()">Duplicate this module</button>
+            </div>
             <button type="button" class="btn" style="width:auto;" onclick="saveTWCourseAdminModule()">Save</button>
           </div>
         </div>
