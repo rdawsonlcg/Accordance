@@ -2661,6 +2661,41 @@ export {
       return bookChapter;
     }
 
+    // Splits a reference like "1 Corinthians 13:4" into book/chapter/verse
+    // for sorting purposes. Matched against BIBLE_STUDIES_BOOK_ORDER's own
+    // real book names, longest first, rather than just splitting on the
+    // first space -- several books have one in their own name ("1
+    // Corinthians", "Song of Solomon"), so naive splitting would cut a
+    // multi-word book's name in half. A reference that doesn't match any
+    // known book (shouldn't normally happen, but data can always be messier
+    // than expected) sorts to the very end rather than crashing or being
+    // mistaken for Genesis.
+    //
+    // Built lazily, on first real use, rather than as a plain top-level
+    // const: this code sits well before BIBLE_STUDIES_BOOK_ORDER's own
+    // declaration further down the file, and a plain const here would try
+    // to read it before it's been initialized at all (a "cannot access
+    // before initialization" error the moment the script loads) -- the
+    // same class of load-order hazard fixed the same way in
+    // shared/coreD.js's FOUNDATIONS_SCRIPTURE_REGEX and
+    // shared/churchResources.js's CHURCH_RESOURCE_REFERENCE_REGEX.
+    let _myMarginsBookNamesByLengthDesc = null;
+    function getMyMarginsBookNamesByLengthDesc() {
+      if (!_myMarginsBookNamesByLengthDesc) {
+        _myMarginsBookNamesByLengthDesc = [...BIBLE_STUDIES_BOOK_ORDER].sort((a, b) => b.length - a.length);
+      }
+      return _myMarginsBookNamesByLengthDesc;
+    }
+    function parseMyMarginsReference(ref) {
+      const book = getMyMarginsBookNamesByLengthDesc().find(b => ref === b || ref.startsWith(b + ' '));
+      const bookIndex = book ? BIBLE_STUDIES_BOOK_ORDER.indexOf(book) : BIBLE_STUDIES_BOOK_ORDER.length;
+      const rest = book ? ref.slice(book.length).trim() : '';
+      const match = rest.match(/^(\d+):(\d+)/);
+      const chapter = match ? parseInt(match[1], 10) : 0;
+      const verse = match ? parseInt(match[2], 10) : 0;
+      return { bookIndex, chapter, verse };
+    }
+
     // The cover page's title/name are user-editable (contenteditable) and persisted
     // locally so they survive re-renders and future visits. Title defaults to
     // "MyMargins"; name defaults to the user's Cords display name.
@@ -2715,6 +2750,16 @@ export {
       }
 
       const notes = Object.values(notesMap);
+      // Genesis-to-Revelation order (book, then chapter, then verse) --
+      // window.userMarginNotes has no inherent order of its own (it just
+      // reflects whatever order the margin_notes table happened to return
+      // rows in, e.g. creation order), which read as essentially random
+      // once printed as a page of notes rather than an ordered study aid.
+      notes.sort((a, b) => {
+        const pa = parseMyMarginsReference(a.reference);
+        const pb = parseMyMarginsReference(b.reference);
+        return (pa.bookIndex - pb.bookIndex) || (pa.chapter - pb.chapter) || (pa.verse - pb.verse);
+      });
 
       if (notes.length === 0) {
         container.innerHTML = coverHtml + '<div style="padding: 20px; text-align: center; color: var(--text-muted);">No margin notes found. Add notes in the Bible View to see them here!</div>';

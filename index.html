@@ -10708,6 +10708,22 @@ ${url}`;
     }
     return bookChapter;
   }
+  var _myMarginsBookNamesByLengthDesc = null;
+  function getMyMarginsBookNamesByLengthDesc() {
+    if (!_myMarginsBookNamesByLengthDesc) {
+      _myMarginsBookNamesByLengthDesc = [...BIBLE_STUDIES_BOOK_ORDER].sort((a, b) => b.length - a.length);
+    }
+    return _myMarginsBookNamesByLengthDesc;
+  }
+  function parseMyMarginsReference(ref) {
+    const book = getMyMarginsBookNamesByLengthDesc().find((b) => ref === b || ref.startsWith(b + " "));
+    const bookIndex = book ? BIBLE_STUDIES_BOOK_ORDER.indexOf(book) : BIBLE_STUDIES_BOOK_ORDER.length;
+    const rest = book ? ref.slice(book.length).trim() : "";
+    const match = rest.match(/^(\d+):(\d+)/);
+    const chapter = match ? parseInt(match[1], 10) : 0;
+    const verse = match ? parseInt(match[2], 10) : 0;
+    return { bookIndex, chapter, verse };
+  }
   var MYMARGINS_COVER_TITLE_KEY = "mymargins_cover_title";
   var MYMARGINS_COVER_NAME_KEY = "mymargins_cover_name";
   function getMyMarginsCoverDefaults() {
@@ -10750,6 +10766,11 @@ ${url}`;
       }
     }
     const notes = Object.values(notesMap);
+    notes.sort((a, b) => {
+      const pa = parseMyMarginsReference(a.reference);
+      const pb = parseMyMarginsReference(b.reference);
+      return pa.bookIndex - pb.bookIndex || pa.chapter - pb.chapter || pa.verse - pb.verse;
+    });
     if (notes.length === 0) {
       container.innerHTML = coverHtml + '<div style="padding: 20px; text-align: center; color: var(--text-muted);">No margin notes found. Add notes in the Bible View to see them here!</div>';
       return;
