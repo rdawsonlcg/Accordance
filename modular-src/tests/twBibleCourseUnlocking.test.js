@@ -176,3 +176,44 @@ test('a module with no knowledge checks at all counts as complete immediately, w
 
   assert.strictEqual(window.isTWModuleFullyComplete(mod), true, 'a module with zero knowledge checks has nothing left to require -- it should count as done without any section needing to be opened');
 });
+
+test('reopening an already-complete, video-less/quiz-less lesson actually re-renders it open (real bug: it silently did nothing visible)', async () => {
+  const { window } = await loadApp({
+    html: '<div id="tw-course-detail-panel"></div><div id="tw-course-content" style="display:none"></div>',
+    extraExportNames: [
+      ...testExports.twBibleCourse, 'toggleTWLesson', 'openTWModule',
+      '__setTwBibleCourseDataForTest',
+    ],
+    extraSource: `import { __setTwBibleCourseDataForTest } from './shared/twBibleCourse.js';`,
+  });
+
+  const mod = { id: 'm1', title: 'Module', lessons: [
+    { id: 'l1', title: 'Introduction', content: 'Some text.', video: [], quizzes: [] }, // text-only, no video, no quiz
+  ]};
+  window.__setTwBibleCourseDataForTest([mod]);
+  Object.keys(window.twCourseProgress).forEach(k => delete window.twCourseProgress[k]);
+  window.openTWModule('m1');
+
+  // First open: auto-completes (no video/quiz to otherwise trigger it) and
+  // should render open.
+  window.toggleTWLesson(0);
+  let panelHtml = window.document.getElementById('tw-course-detail-panel').innerHTML;
+  assert.ok(panelHtml.includes('foundations-session-item open'), 'the lesson should render open the first time');
+  assert.strictEqual(window.twCourseProgress['l1'], true, 'opening a lesson with no video and no quiz should complete it');
+
+  // Close it.
+  window.toggleTWLesson(0);
+  panelHtml = window.document.getElementById('tw-course-detail-panel').innerHTML;
+  assert.ok(!panelHtml.includes('foundations-session-item open'), 'the lesson should render closed after toggling it again');
+
+  // Reopen it -- this is the actual bug. markTWLessonComplete's own guard
+  // silently no-ops for an already-complete lesson (nothing new to check),
+  // and toggleTWLesson used to `return` immediately afterward on the
+  // assumption that a render always happened regardless -- meaning this
+  // exact reopen used to change openTWLessonIndex internally but never
+  // actually re-render the panel, leaving the accordion looking stuck
+  // closed even though the button's own onclick fired correctly.
+  window.toggleTWLesson(0);
+  panelHtml = window.document.getElementById('tw-course-detail-panel').innerHTML;
+  assert.ok(panelHtml.includes('foundations-session-item open'), 'reopening an already-complete lesson should still render it open, not silently do nothing');
+});

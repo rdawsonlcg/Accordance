@@ -679,8 +679,17 @@ export function maybeShowTWCourseCompletionModal() {
         const lesson = mod && mod.lessons[idx];
         if (lesson && (!lesson.video || lesson.video.filter(v => v.url).length === 0) &&
             (!lesson.quizzes || lesson.quizzes.length === 0)) {
+          // NOT a `return` after this: markTWLessonComplete only re-renders
+          // the panel itself the first time a lesson completes -- for one
+          // that's already complete (revisiting it later), its own guard
+          // returns immediately, before ever reaching that re-render. This
+          // used to `return` right here on the assumption that the render
+          // always happened regardless, which meant reopening an
+          // already-complete, video-less, quiz-less lesson (there being
+          // nothing else to gate the fallback render below on) silently did
+          // nothing visible at all -- openTWLessonIndex changed internally,
+          // but the accordion never actually appeared to open.
           markTWLessonComplete(activeTWModuleId, idx);
-          return; // markTWLessonComplete already re-renders the panel
         }
       }
       renderTWModuleDetailPanel();

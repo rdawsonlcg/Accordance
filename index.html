@@ -6251,7 +6251,6 @@ ${titlesToImport.join(", ")}`)) return;
       const lesson = mod && mod.lessons[idx];
       if (lesson && (!lesson.video || lesson.video.filter((v) => v.url).length === 0) && (!lesson.quizzes || lesson.quizzes.length === 0)) {
         markTWLessonComplete(activeTWModuleId, idx);
-        return;
       }
     }
     renderTWModuleDetailPanel();
