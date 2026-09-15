@@ -378,6 +378,34 @@ export function applyContentFormat(textarea, updateFn, kind) {
     before = '[';
     after = `](${url.trim()})`;
     placeholder = 'link text';
+  } else if (kind === 'image') {
+    const url = prompt('Image URL:', 'https://');
+    if (!url) return;
+    // Inserted on its own line (blank lines before/after, when there's
+    // existing content) since an image is a block-level element once
+    // rendered, not something that reads naturally inline mid-sentence the
+    // way a bold word or a link does.
+    const needsLeadingBreak = start > 0 && value[start - 1] !== '\n';
+    before = (needsLeadingBreak ? '\n\n' : '') + '![';
+    after = `](${url.trim()})\n`;
+    placeholder = 'image description';
+  } else if (kind === 'gallery') {
+    // Starter block of two placeholder image lines -- the actual gallery
+    // grouping (shared/coreD.js's applyFoundationsMarkup) triggers on any
+    // 2+ consecutive image lines, so this just gives the admin a
+    // ready-to-edit example of that shape rather than requiring them to
+    // already know the convention themselves. Both placeholder URLs get
+    // selected together first, so typing immediately replaces the first
+    // one; the second still needs its own edit afterward.
+    const needsLeadingBreak = start > 0 && value[start - 1] !== '\n';
+    const block = (needsLeadingBreak ? '\n\n' : '') +
+      '![First image](https://...)\n![Second image](https://...)\n';
+    textarea.value = value.substring(0, start) + block + value.substring(end);
+    updateFn(textarea.value);
+    const urlStart = start + (needsLeadingBreak ? 2 : 0) + '!['.length + 'First image'.length + 2;
+    textarea.focus();
+    textarea.setSelectionRange(urlStart, urlStart + 'https://...'.length);
+    return;
   } else {
     return;
   }

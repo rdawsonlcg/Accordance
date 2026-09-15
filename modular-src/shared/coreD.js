@@ -602,12 +602,92 @@ import {
         const level = hashes.length;
         return `<div class="foundations-content-heading foundations-content-heading-${level}">${content}</div>`;
       });
+      // Image galleries: 2+ CONSECUTIVE image lines (no blank line or other
+      // text between them) become one gallery widget with prev/next arrows,
+      // rather than several stacked images -- checked, and converted,
+      // before the single-image regex right below it (which only ever
+      // handles whatever image lines are left over: a single image on its
+      // own line, or one that has other text alongside it on the same
+      // line, neither of which reads naturally as "a gallery").
+      // A leading "^!\[...\]\(...\)$" per line, at least two lines in a
+      // row -- each image line captured separately so alt text and URL are
+      // both available per-slide, not just concatenated across the block.
+      out = out.replace(/(?:^!\[([^\]]*)\]\(([^)\s]+)\)[ \t]*$\n?){2,}/gm, (block) => {
+        const slides = [];
+        const slideRe = /^!\[([^\]]*)\]\(([^)\s]+)\)[ \t]*$/gm;
+        let m;
+        while ((m = slideRe.exec(block)) !== null) slides.push({ alt: m[1], url: m[2] });
+        return renderFoundationsImageGalleryHtml(slides);
+      });
+      // A single, still-unconverted image line (everything the gallery
+      // pass above didn't already turn into a gallery) becomes one plain
+      // <img>, full-width, matching how a lone image reads best inline
+      // with the surrounding text rather than needing arrows for just one.
+      // Quotes get their own explicit escape here (and in the gallery
+      // helper above) since escapeFoundationsHtml (already run on this
+      // text before applyFoundationsMarkup ever sees it) only escapes
+      // &/</>, not " — an unescaped quote in a URL or alt text could
+      // otherwise break out of these attributes entirely.
+      out = out.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (m, alt, url) =>
+        `<img src="${url.replace(/"/g, '&quot;')}" alt="${alt.replace(/"/g, '&quot;')}" class="foundations-content-image" loading="lazy">`);
       out = out.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
       out = out.replace(/\*([^*]+?)\*/g, '<em>$1</em>');
       out = out.replace(/__([^_]+?)__/g, '<u>$1</u>');
       out = out.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
       return out;
     }
+
+    // Builds one gallery's HTML: every slide's <img> is present in the DOM
+    // from the start (all but the first hidden via the "active" class
+    // toggle below), rather than only inserting the current slide and
+    // swapping its src on navigation -- simpler, and means every image in
+    // the gallery loads (lazily) once, up front, instead of re-fetching
+    // each time a learner pages back to one they'd already seen.
+    // galleryPrevSlide/galleryNextSlide (shared/coreD.js) are what the
+    // arrow buttons below actually call; they just toggle which slide has
+    // the "active" class and update the counter text, entirely within the
+    // DOM already rendered here -- no re-render of the surrounding content
+    // needed for something as small as changing which image shows.
+    let _foundationsGalleryIdCounter = 0;
+    export function renderFoundationsImageGalleryHtml(slides) {
+      const galleryId = `fgallery-${++_foundationsGalleryIdCounter}`;
+      const slidesHtml = slides.map((s, i) =>
+        `<img src="${s.url.replace(/"/g, '&quot;')}" alt="${s.alt.replace(/"/g, '&quot;')}" class="foundations-gallery-slide${i === 0 ? ' active' : ''}" loading="lazy">`
+      ).join('');
+      return `
+        <div class="foundations-gallery" id="${galleryId}" data-index="0" data-count="${slides.length}">
+          <div class="foundations-gallery-slides">${slidesHtml}</div>
+          <button type="button" class="foundations-gallery-arrow foundations-gallery-prev" onclick="galleryPrevSlide('${galleryId}')" aria-label="Previous image">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <button type="button" class="foundations-gallery-arrow foundations-gallery-next" onclick="galleryNextSlide('${galleryId}')" aria-label="Next image">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+          <div class="foundations-gallery-counter">1 / ${slides.length}</div>
+        </div>`;
+    }
+
+    // Moves a gallery to the previous/next slide, wrapping around at either
+    // end (rather than disabling the arrow at the first/last image) -- for a
+    // handful of slides in a row, looping around reads as more natural than
+    // hitting a dead stop, and avoids needing to track/toggle a disabled
+    // style on the buttons for something this small.
+    export function galleryPrevSlide(galleryId) { moveFoundationsGallery(galleryId, -1); }
+    export function galleryNextSlide(galleryId) { moveFoundationsGallery(galleryId, 1); }
+    function moveFoundationsGallery(galleryId, delta) {
+      const gallery = document.getElementById(galleryId);
+      if (!gallery) return;
+      const count = parseInt(gallery.dataset.count, 10) || 0;
+      if (count === 0) return;
+      let index = parseInt(gallery.dataset.index, 10) || 0;
+      index = (index + delta + count) % count;
+      gallery.dataset.index = String(index);
+      const slides = gallery.querySelectorAll('.foundations-gallery-slide');
+      slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+      const counter = gallery.querySelector('.foundations-gallery-counter');
+      if (counter) counter.textContent = `${index + 1} / ${count}`;
+    }
+
 
     // Built from the same canonical 66-book list "By the Book" uses, so a
     // detected reference always matches how verses are actually keyed
@@ -1339,6 +1419,8 @@ import {
                 <button type="button" class="foundations-format-btn" title="Underline" onclick="applyFoundationsFormat(${idx}, 'underline')"><u>U</u></button>
                 <button type="button" class="foundations-format-btn" title="Bulleted List" onclick="applyFoundationsFormat(${idx}, 'bullet')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line><circle cx="4" cy="6" r="1.4" fill="currentColor" stroke="none"></circle><circle cx="4" cy="12" r="1.4" fill="currentColor" stroke="none"></circle><circle cx="4" cy="18" r="1.4" fill="currentColor" stroke="none"></circle></svg></button>
                 <button type="button" class="foundations-format-btn" title="Insert Link" onclick="applyFoundationsFormat(${idx}, 'link')">🔗</button>
+                <button type="button" class="foundations-format-btn" title="Insert Image" onclick="applyFoundationsFormat(${idx}, 'image')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></button>
+                <button type="button" class="foundations-format-btn" title="Insert Image Gallery (2+ images with prev/next arrows)" onclick="applyFoundationsFormat(${idx}, 'gallery')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="14" height="14" rx="2"></rect><rect x="8" y="7" width="14" height="14" rx="2"></rect></svg></button>
                 <button type="button" class="foundations-format-btn" title="Upload a table (CSV or TSV file)" onclick="document.getElementById('foundations-table-upload-${idx}').click()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"></rect><line x1="3" y1="10" x2="21" y2="10"></line><line x1="3" y1="16" x2="21" y2="16"></line><line x1="10.5" y1="4" x2="10.5" y2="20"></line></svg></button>
                 <input type="file" id="foundations-table-upload-${idx}" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain" style="display:none;" onchange="handleFoundationsTableUpload(event, ${idx})">
               </div>
