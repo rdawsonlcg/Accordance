@@ -564,14 +564,20 @@ export function maybeShowTWCourseCompletionModal() {
           </div>` : '';
 
         // Video lessons get their Knowledge Check via the full-screen player
-        // overlay once the video ends (see fsvForwardTrack/showFsvKnowledgeCheck).
-        // A video-less lesson has no such trigger, so its Knowledge Check
-        // renders right here instead — either way, answering every one of the
-        // lesson's questions correctly is now the ONLY way to complete it
-        // (no more manual checkoff). If there's no Knowledge Check configured
-        // yet, this simply renders nothing rather than saying so.
+        // overlay once the video ends (see fsvForwardTrack/showFsvKnowledgeCheck),
+        // which already re-shows it every time the video is rewatched,
+        // completed or not. A video-less lesson has no such trigger, so its
+        // Knowledge Check renders right here instead -- answering every one
+        // of the lesson's questions correctly is the only way it originally
+        // completes, but reopening it afterward still shows the same
+        // Knowledge Check rather than an empty body (this used to be gated
+        // on `!isComplete`, meaning a quiz-only lesson with no other content
+        // rendered nothing at all once done -- appearing broken to revisit,
+        // not just "already finished"). markTWLessonComplete's own guard
+        // already no-ops for a lesson that's already complete, so letting it
+        // be re-answered here doesn't risk any duplicate side effect.
         let kcHtml = '';
-        if (!isComplete && videos.length === 0 && lesson.quizzes && lesson.quizzes.length > 0) {
+        if (videos.length === 0 && lesson.quizzes && lesson.quizzes.length > 0) {
           kcHtml = renderTWInlineKnowledgeCheck(mod.id, idx, lesson.quizzes);
         }
 

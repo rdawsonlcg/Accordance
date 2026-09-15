@@ -6173,7 +6173,7 @@ ${titlesToImport.join(", ")}`)) return;
             </div>
           </div>` : "";
       let kcHtml = "";
-      if (!isComplete && videos.length === 0 && lesson.quizzes && lesson.quizzes.length > 0) {
+      if (videos.length === 0 && lesson.quizzes && lesson.quizzes.length > 0) {
         kcHtml = renderTWInlineKnowledgeCheck(mod.id, idx, lesson.quizzes);
       }
       bodyHtml = `<div class="foundations-session-body">${mediaHtml}${resourcesHtml}${contentHtml}${kcHtml}</div>`;
