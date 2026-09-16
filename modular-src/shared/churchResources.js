@@ -532,7 +532,7 @@ import {
 
           let typeBadge = resType ? `<span class="type-tag">${resType}</span>` : '';
           let tagBadges = resTags ? resTags.split(',').map(t => `<span class="tag">${t.trim()}</span>`).join(' ') : '';
-          let displayTitleText = resTitle || resUrl;
+          let displayTitleText = escapeHtml(resTitle || resUrl);
 
           // A YouTube link (or a link that simply passes a YouTube video id through,
           // e.g. another site's own "watch" page) opens in the same full-screen
@@ -567,11 +567,11 @@ import {
             // otherwise be unreadable against a busy custom cover image.
             const linkIsOverCustomThumb = isCustomThumbnailShown(crData, thumbUrl);
             const linkColorStyle = linkIsOverCustomThumb ? 'color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.85);' : 'color: var(--primary-color);';
-            titleHtml = `<a href="${resUrl}" target="_blank" style="font-size: 16px; font-weight: bold; ${linkColorStyle} text-decoration: none; font-family: 'Plus Jakarta Sans', sans-serif;">${displayTitleText}</a>`;
+            titleHtml = `<a href="${escapeHtml(resUrl)}" target="_blank" style="font-size: 16px; font-weight: bold; ${linkColorStyle} text-decoration: none; font-family: 'Plus Jakarta Sans', sans-serif;">${displayTitleText}</a>`;
           } else {
             titleHtml = displayTitleText ? `<span style="font-size: 16px; font-weight: bold; color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif;">${displayTitleText}</span>` : '';
           }
-          let notesHtml = resNotes ? `<div style="font-size: 13px; ${thumbUrl ? 'color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);' : 'color: var(--text-muted);'} margin-top: 4px; white-space: pre-wrap;">${resNotes}</div>` : '';
+          let notesHtml = resNotes ? `<div style="font-size: 13px; ${thumbUrl ? 'color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);' : 'color: var(--text-muted);'} margin-top: 4px; white-space: pre-wrap;">${escapeHtml(resNotes)}</div>` : '';
           const playIconHtml = (youTubeId && thumbUrl) ? `<div class="church-resource-video-playbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg></div>` : '';
           // A "Booklet"-tagged resource showing its own custom thumbnail (its cover
           // image) gets top-anchored instead of the usual centered crop — see the
@@ -642,7 +642,7 @@ import {
 
       let typeBadge = r.type ? `<span class="type-tag">${r.type}</span>` : '';
       let tagBadges = r.tags ? r.tags.split(',').map(t => `<span class="tag">${t.trim()}</span>`).join(' ') : '';
-      let displayTitle = r.title || r.resource;
+      let displayTitle = escapeHtml(r.title || r.resource);
 
       // Same resolution used by the Note view's Church Resources column, so a
       // resource's thumbnail (or lack of one) and its in-app video player both
@@ -664,9 +664,9 @@ import {
         // would otherwise apply) so it stays readable against the cover image.
         const linkIsOverCustomThumb = isCustomThumbnailShown(r, thumbUrl);
         const linkColorStyle = linkIsOverCustomThumb ? 'color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.85);' : 'color: var(--primary-color);';
-        titleHtml = r.resource ? `<a href="${r.resource}" target="_blank" style="${linkColorStyle} text-decoration: none;">${displayTitle}</a>` : (displayTitle ? `<span>${displayTitle}</span>` : '');
+        titleHtml = r.resource ? `<a href="${escapeHtml(r.resource)}" target="_blank" style="${linkColorStyle} text-decoration: none;">${displayTitle}</a>` : (displayTitle ? `<span>${displayTitle}</span>` : '');
       }
-      let notesHtml = r.notes ? `<div style="font-size: 13px; ${thumbUrl ? 'color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);' : 'color: var(--text-muted);'} margin-top: 4px; white-space: pre-wrap;">${r.notes}</div>` : '';
+      let notesHtml = r.notes ? `<div style="font-size: 13px; ${thumbUrl ? 'color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);' : 'color: var(--text-muted);'} margin-top: 4px; white-space: pre-wrap;">${escapeHtml(r.notes)}</div>` : '';
       const playIconHtml = (youTubeId && thumbUrl) ? `<div class="church-resource-video-playbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg></div>` : '';
 
       let verseRefHtml = r.verseRef ? `<div style="font-size: 15px; font-family: var(--font-heading); ${thumbUrl ? 'color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.85); border-bottom-color: rgba(255,255,255,0.4);' : 'color: var(--primary-color);'} letter-spacing: 0.5px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">${r.verseRef}</div>` : '';

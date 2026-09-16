@@ -696,12 +696,17 @@ import {
           ${cfg.presenters.map(p => {
             const clickable = cfg.presenters.length > 1;
             const isActive = activeStudyPresenterFilter === p.name;
-            const safeName = p.name.replace(/'/g, "\\'");
+            // Needs BOTH escapes: single quotes for the JS string literal
+            // inside toggleStudyPresenterFilter('...'), and double quotes
+            // for the onclick="..." HTML attribute itself -- escaping only
+            // the first (as this used to) still leaves a literal " free to
+            // break out of the attribute and inject a new one.
+            const safeName = p.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             return `
             <div class="${clickable ? 'study-presenter-chip' : ''} ${clickable && isActive ? 'active' : ''}"
                  style="display:flex; align-items:center; gap:10px; flex-shrink:0; white-space:nowrap; ${clickable ? 'cursor:pointer;' : ''}"
                  ${clickable ? `onclick="toggleStudyPresenterFilter('${safeName}')" title="Filter by ${p.name.replace(/"/g, '&quot;')}"` : ''}>
-              <img src="${p.photo}" alt="${p.name}" style="width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid ${clickable && isActive ? 'var(--primary-color)' : 'var(--border-color)'}; flex-shrink:0;">
+              <img src="${p.photo.replace(/"/g, '&quot;')}" alt="${p.name.replace(/"/g, '&quot;')}" style="width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid ${clickable && isActive ? 'var(--primary-color)' : 'var(--border-color)'}; flex-shrink:0;">
               <div>
                 <div style="font-size:12px; color:var(--text-muted);">Presented by</div>
                 <div style="font-weight:700; color:var(--text-main);">${p.name}</div>
@@ -764,7 +769,7 @@ import {
               // show a working link instead of a player that would fail with a YouTube
               // "Video player configuration error".
               mediaHtml = `
-                <a href="${s.video}" target="_blank" rel="noopener" onclick="markBookResourceClicked('${safeBookTitle}', ${originalIndex});" style="display:flex; align-items:center; gap:10px; background: var(--bg-color); border:1px solid var(--border-color); padding:10px 14px; border-radius:8px; text-decoration:none; color:var(--text-main); max-width:100%; box-sizing:border-box;">
+                <a href="${s.video.replace(/"/g, '&quot;')}" target="_blank" rel="noopener" onclick="markBookResourceClicked('${safeBookTitle}', ${originalIndex});" style="display:flex; align-items:center; gap:10px; background: var(--bg-color); border:1px solid var(--border-color); padding:10px 14px; border-radius:8px; text-decoration:none; color:var(--text-main); max-width:100%; box-sizing:border-box;">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
                   <span style="font-weight:600; font-size:13px;">Watch video (opens in a new tab) — this link couldn't be embedded directly</span>
                 </a>`;
@@ -775,7 +780,7 @@ import {
             const isStudyGuide = type === 'study_guide';
             const articleUrl = s.article || '#';
             mediaHtml = articleUrl && articleUrl !== '#' ? `
-              <a href="${articleUrl}" target="_blank" rel="noopener" onclick="markBookResourceClicked('${safeBookTitle}', ${originalIndex});" style="display:flex; align-items:center; gap:10px; background: var(--bg-color); border:1px solid var(--border-color); padding:10px 14px; border-radius:8px; text-decoration:none; color:var(--text-main); max-width:100%; box-sizing:border-box;">
+              <a href="${articleUrl.replace(/"/g, '&quot;')}" target="_blank" rel="noopener" onclick="markBookResourceClicked('${safeBookTitle}', ${originalIndex});" style="display:flex; align-items:center; gap:10px; background: var(--bg-color); border:1px solid var(--border-color); padding:10px 14px; border-radius:8px; text-decoration:none; color:var(--text-main); max-width:100%; box-sizing:border-box;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">${isStudyGuide ? '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>' : '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>'}</svg>
                 <span style="font-weight:600; font-size:13px;">${isStudyGuide ? 'Read Study Guide' : 'Read Article'}</span>
               </a>` : `<div style="color:var(--text-muted); font-size:12px;">${isStudyGuide ? 'Study guide' : 'Article'} coming soon.</div>`;
@@ -783,7 +788,7 @@ import {
             const safeAudioTitle = `${cfg.title} • ${s.title || 'Audio'}`.replace(/"/g, '&quot;');
             mediaHtml = `
               <div style="display: flex; align-items: center; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); padding: 10px 14px; border-radius: 8px; gap: 8px; color: #fff; max-width: 100%; box-sizing: border-box;">
-                <audio id="audio-player-${i}" data-media-title="${safeAudioTitle}" src="${s.audio}" preload="metadata" ontimeupdate="updateProgress(${i})" onloadedmetadata="initAudio(${i})" onended="resetPlayButton(${i})"></audio>
+                <audio id="audio-player-${i}" data-media-title="${safeAudioTitle}" src="${s.audio.replace(/"/g, '&quot;')}" preload="metadata" ontimeupdate="updateProgress(${i})" onloadedmetadata="initAudio(${i})" onended="resetPlayButton(${i})"></audio>
                 <button type="button" onclick="togglePlay(${i}); markBookResourceClicked('${safeBookTitle}', ${originalIndex});" id="play-btn-${i}" style="background: rgba(255,255,255,0.2); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;" title="Play/Pause">▶</button>
                 <button type="button" onclick="skipAudio('audio-player-${i}', -10)" style="background: rgba(255,255,255,0.2); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;" title="Rewind 10 seconds"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button>
                 <button type="button" onclick="skipAudio('audio-player-${i}', 10)" style="background: rgba(255,255,255,0.2); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;" title="Fast forward 10 seconds"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg></button>
@@ -795,7 +800,7 @@ import {
           }
           const sessionPresenterHtml = s.presenter ? `
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-              <img src="${s.presenter.photo}" alt="${s.presenter.name}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color);">
+              <img src="${s.presenter.photo.replace(/"/g, '&quot;')}" alt="${s.presenter.name.replace(/"/g, '&quot;')}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color);">
               <span style="font-size:12px; color:var(--text-muted);">${s.presenter.name}</span>
             </div>` : '';
           const safeSessionTitle = (s.title || '').replace(/'/g, "\\'");

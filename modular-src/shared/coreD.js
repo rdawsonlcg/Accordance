@@ -588,8 +588,19 @@ import {
     //      text already inside an <a>...</a> from step 2, so a reference the
     //      admin already linked by hand never ends up inside a second,
     //      invalid nested link.
+    // Escapes &/</>/" and ' -- matches app.js's own escapeHtml exactly
+    // (kept as a separate function here rather than importing that one,
+    // since this module already has its own well-established name for it
+    // used throughout this file). This used to only escape &/</>, missing
+    // quotes entirely -- harmless for plain text content, but a real gap
+    // anywhere this module's output puts a value inside an HTML attribute
+    // (the image/gallery and link insertion in applyFoundationsMarkup
+    // below both do exactly that, for a URL or alt text): an unescaped "
+    // there could break out of the attribute and inject a new one. Fixed
+    // at the source here, rather than only patching those two call sites,
+    // so anything else that ever uses this function is covered too.
     export function escapeFoundationsHtml(str) {
-      return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return (str || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
     }
 
     export function applyFoundationsMarkup(text) {
@@ -633,7 +644,16 @@ import {
       out = out.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
       out = out.replace(/\*([^*]+?)\*/g, '<em>$1</em>');
       out = out.replace(/__([^_]+?)__/g, '<u>$1</u>');
-      out = out.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      // The url capture group ([^)\s]+) excludes whitespace but not a
+      // quote character -- a URL like https://x.com/"onmouseover="..."
+      // (no spaces, so it matches fully) would otherwise be inserted
+      // straight into href="..." and break out of the attribute for real.
+      // escapeFoundationsHtml (already run on this text before
+      // applyFoundationsMarkup ever sees it) only escapes &/</>, not ",
+      // so this needs its own explicit escape here -- same reasoning, and
+      // the same fix, as the image/gallery insertion just above.
+      out = out.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, text, url) =>
+        `<a href="${url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${text}</a>`);
       return out;
     }
 

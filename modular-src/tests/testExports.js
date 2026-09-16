@@ -32,6 +32,7 @@ module.exports = {
   byTheBook: [
     'getBibleStudyBookConfig',
     'getSessionType',
+    'renderBibleStudyInfoPanel',
   ],
   // shared/records.js
   records: [

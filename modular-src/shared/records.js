@@ -387,8 +387,12 @@ import {
 
     export function renderRecordIconHtml(icon) {
       if (!icon) return '🏅';
-      if (/^(https?:|data:)/i.test(icon)) return `<img src="${icon}" alt="">`;
-      return icon;
+      if (/^(https?:|data:)/i.test(icon)) return `<img src="${icon.replace(/"/g, '&quot;')}" alt="">`;
+      // Whatever isn't a URL/data-uri is expected to just be an emoji, but
+      // there's nothing actually stopping an admin from typing real HTML
+      // here instead -- escaped before returning as plain text content, so
+      // it can only ever display as inert text, never run as markup.
+      return icon.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
     }
 
     // ------------------------------------------------------------------
