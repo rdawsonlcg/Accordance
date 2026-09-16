@@ -273,7 +273,7 @@ import {
       document.querySelectorAll('.study-presenter-picker').forEach(select => {
         const current = select.value;
         select.innerHTML = `<option value="">${placeholder}</option>` +
-          studyPresentersList.map(p => `<option value="${p.id}">${(p.name || '').replace(/</g, '&lt;')}</option>`).join('');
+          studyPresentersList.map(p => `<option value="${p.id}">${escapeHtml(p.name || '')}</option>`).join('');
         select.value = current && studyPresentersList.some(p => String(p.id) === current) ? current : '';
       });
 
@@ -696,20 +696,27 @@ import {
           ${cfg.presenters.map(p => {
             const clickable = cfg.presenters.length > 1;
             const isActive = activeStudyPresenterFilter === p.name;
-            // Needs BOTH escapes: single quotes for the JS string literal
-            // inside toggleStudyPresenterFilter('...'), and double quotes
-            // for the onclick="..." HTML attribute itself -- escaping only
-            // the first (as this used to) still leaves a literal " free to
-            // break out of the attribute and inject a new one.
+            // safeName is specifically for the onclick="func('...')" JS
+            // string literal below -- needs backslash-escaping its own
+            // quote (so the JS stays valid) AND separately &quot;-escaping
+            // for the surrounding HTML attribute (so the HTML parser
+            // doesn't end the attribute early) -- genuinely different from
+            // plain HTML-context escaping, so escapedName/escapedPhoto
+            // (via escapeHtml, for every other use of these two values
+            // below: title=, alt=, src=, and the plain "Presented by"
+            // text) are kept as their own separate variables rather than
+            // reusing this one everywhere.
             const safeName = p.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const escapedName = escapeHtml(p.name);
+            const escapedPhoto = escapeHtml(p.photo);
             return `
             <div class="${clickable ? 'study-presenter-chip' : ''} ${clickable && isActive ? 'active' : ''}"
                  style="display:flex; align-items:center; gap:10px; flex-shrink:0; white-space:nowrap; ${clickable ? 'cursor:pointer;' : ''}"
-                 ${clickable ? `onclick="toggleStudyPresenterFilter('${safeName}')" title="Filter by ${p.name.replace(/"/g, '&quot;')}"` : ''}>
-              <img src="${p.photo.replace(/"/g, '&quot;')}" alt="${p.name.replace(/"/g, '&quot;')}" style="width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid ${clickable && isActive ? 'var(--primary-color)' : 'var(--border-color)'}; flex-shrink:0;">
+                 ${clickable ? `onclick="toggleStudyPresenterFilter('${safeName}')" title="Filter by ${escapedName}"` : ''}>
+              <img src="${escapedPhoto}" alt="${escapedName}" style="width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid ${clickable && isActive ? 'var(--primary-color)' : 'var(--border-color)'}; flex-shrink:0;">
               <div>
                 <div style="font-size:12px; color:var(--text-muted);">Presented by</div>
-                <div style="font-weight:700; color:var(--text-main);">${p.name}</div>
+                <div style="font-weight:700; color:var(--text-main);">${escapedName}</div>
               </div>
             </div>`;
           }).join('')}
@@ -750,7 +757,7 @@ import {
         sessionsHtml = visibleSessions.map((s, i) => {
           const type = getSessionType(s);
           const originalIndex = allSessions.indexOf(s);
-          const safeBookTitle = cfg.title.replace(/'/g, "\\'");
+          const safeBookTitle = cfg.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
           let mediaHtml;
           if (type === 'video' && s.video) {
             const embedUrl = isDirectVideoUrl(s.video) || toYouTubeEmbedUrl(s.video);
@@ -800,14 +807,14 @@ import {
           }
           const sessionPresenterHtml = s.presenter ? `
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-              <img src="${s.presenter.photo.replace(/"/g, '&quot;')}" alt="${s.presenter.name.replace(/"/g, '&quot;')}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color);">
-              <span style="font-size:12px; color:var(--text-muted);">${s.presenter.name}</span>
+              <img src="${escapeHtml(s.presenter.photo)}" alt="${escapeHtml(s.presenter.name)}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color);">
+              <span style="font-size:12px; color:var(--text-muted);">${escapeHtml(s.presenter.name)}</span>
             </div>` : '';
-          const safeSessionTitle = (s.title || '').replace(/'/g, "\\'");
+          const safeSessionTitle = (s.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
           return `
             <div id="book-session-${originalIndex}" style="margin-bottom:14px;">
               <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:6px;">
-                <div style="font-weight:600; font-size:14px; color:var(--text-main);">${s.title}</div>
+                <div style="font-weight:600; font-size:14px; color:var(--text-main);">${escapeHtml(s.title)}</div>
                 <button class="share-btn" title="Share this resource" style="flex-shrink:0;" onclick="shareBookSession('${safeBookTitle}', ${originalIndex}, '${safeSessionTitle}')">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                 </button>
@@ -904,7 +911,7 @@ import {
       const select = document.getElementById('book-admin-shelf-group');
       if (!select) return;
       select.innerHTML = `<option value="">No group (set this book's own color &amp; height below)</option>` +
-        bookShelfGroupsList.map(g => `<option value="${g.id}">${(g.name || '').replace(/</g, '&lt;')}</option>`).join('') +
+        bookShelfGroupsList.map(g => `<option value="${g.id}">${escapeHtml(g.name || '')}</option>`).join('') +
         `<option value="__new__">+ New group…</option>`;
       select.value = (selectedId != null && bookShelfGroupsList.some(g => g.id === selectedId)) ? String(selectedId) : '';
       handleBookAdminShelfGroupChange();

@@ -287,7 +287,7 @@ import {
     }
 
     export function foundationsNxCardHtml(item) {
-      const safeTitle = (item.title || '').replace(/</g, '&lt;');
+      const safeTitle = escapeFoundationsHtml(item.title || '');
       const heroVideo = getFoundationsHeroVideo(item);
       const heroPreviewEmbedUrl = heroVideo
         ? toYouTubeMutedPreviewEmbedUrl((item.sessions[heroVideo.sessionIdx].video || [])[heroVideo.videoIdx].url)
@@ -298,13 +298,13 @@ import {
             ${foundationsNxThumbHtml(item)}
             ${heroPreviewEmbedUrl ? `<div class="foundations-nx-video-bg"><iframe src="${heroPreviewEmbedUrl}" allow="autoplay; encrypted-media" loading="lazy" tabindex="-1"></iframe></div>` : ''}
             ${item.isNew ? '<span class="foundations-nx-new-badge">New</span>' : ''}
-            <button class="foundations-nx-share-btn" title="Share this class" onclick="event.stopPropagation(); shareFoundationsClass(${item.dbId}, '${(item.title || '').replace(/'/g, "\\'")}')">
+            <button class="foundations-nx-share-btn" title="Share this class" onclick="event.stopPropagation(); shareFoundationsClass(${item.dbId}, '${(item.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;')}')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
             </button>
           </div>
           <div class="foundations-nx-info">
             <div class="foundations-nx-title">${safeTitle}</div>
-            <div class="foundations-nx-meta">${item.presenter ? `With ${item.presenter}` : (item.category || 'General')}</div>
+            <div class="foundations-nx-meta">${item.presenter ? `With ${escapeFoundationsHtml(item.presenter)}` : escapeFoundationsHtml(item.category || 'General')}</div>
           </div>
         </div>`;
     }
@@ -358,7 +358,7 @@ import {
         listEl.innerHTML = `<div class="foundations-rows">${categoryNames.map(cat => `
           <div class="foundations-row">
             <div class="foundations-row-header">
-              <div class="foundations-row-title">${cat.replace(/</g, '&lt;')}</div>
+              <div class="foundations-row-title">${escapeFoundationsHtml(cat)}</div>
               <div class="foundations-row-nav">
                 <button type="button" class="foundations-row-nav-btn" onclick="scrollFoundationsRow(this, -1)" aria-label="Scroll left">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -424,14 +424,14 @@ import {
       const panel = document.getElementById('foundations-detail-panel');
       if (!item || !panel) return;
 
-      const safeTitle = (item.title || '').replace(/'/g, "\\'");
+      const safeTitle = (item.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
       const sessions = item.sessions || [];
       const firstVideo = getFoundationsHeroVideo(item);
 
       const heroPresenterHtml = item.presenter ? `
         <div class="foundations-hero-presenter">
           ${item.presenterPhotoUrl ? `<img src="${item.presenterPhotoUrl.replace(/"/g, '&quot;')}" alt="${item.presenter.replace(/"/g, '&quot;')}">` : ''}
-          <span>With ${item.presenter.replace(/</g, '&lt;')}</span>
+          <span>With ${escapeFoundationsHtml(item.presenter)}</span>
         </div>` : '';
 
       const heroPlayBtnHtml = firstVideo ? `
@@ -458,8 +458,8 @@ import {
             </button>
           </div>
           <div class="foundations-hero-content">
-            <span class="foundations-hero-category">${(item.category || 'General').replace(/</g, '&lt;')}</span>
-            <h3 class="foundations-hero-title">${(item.title || '').replace(/</g, '&lt;')}</h3>
+            <span class="foundations-hero-category">${escapeFoundationsHtml(item.category || 'General')}</span>
+            <h3 class="foundations-hero-title">${escapeFoundationsHtml(item.title || '')}</h3>
             ${heroPresenterHtml}
             <div class="foundations-hero-actions">${heroPlayBtnHtml}</div>
           </div>
@@ -558,9 +558,9 @@ import {
         <div class="foundations-suggestion-card" onclick="openFoundationsItem(${s.dbId})">
           <div class="foundations-card-thumb-wrap">${foundationsCardThumbHtml(s)}</div>
           <div class="foundations-card-info">
-            <div class="foundations-card-title">${s.title}</div>
-            ${s.presenter ? `<div class="foundations-card-presenter">With ${s.presenter}</div>` : ''}
-            <div class="foundations-card-meta">Class • ${s.category || 'General'}</div>
+            <div class="foundations-card-title">${escapeFoundationsHtml(s.title)}</div>
+            ${s.presenter ? `<div class="foundations-card-presenter">With ${escapeFoundationsHtml(s.presenter)}</div>` : ''}
+            <div class="foundations-card-meta">Class • ${escapeFoundationsHtml(s.category || 'General')}</div>
           </div>
         </div>
       `).join('');
@@ -1031,7 +1031,7 @@ import {
         const sessionPresenterHtml = (session.presenter && session.presenter.name) ? `
           <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
             ${session.presenter.photo ? `<img src="${session.presenter.photo.replace(/"/g, '&quot;')}" alt="${session.presenter.name.replace(/"/g, '&quot;')}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color); flex-shrink:0;">` : ''}
-            <span style="font-size:12px; color:var(--text-muted);">Presented by ${session.presenter.name.replace(/</g, '&lt;')}</span>
+            <span style="font-size:12px; color:var(--text-muted);">Presented by ${escapeFoundationsHtml(session.presenter.name)}</span>
           </div>` : '';
 
         const contentHtml = session.content ? `<div class="foundations-detail-body" style="margin-bottom:12px;">${renderFoundationsContentHtml(session.content)}</div>` : '';
@@ -1093,7 +1093,7 @@ import {
               ${resources.map(r => `
                 <a href="${r.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:8px; background: var(--bg-color); border:1px solid var(--border-color); padding:8px 12px; border-radius:8px; text-decoration:none; color:var(--text-main);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                  <span style="font-weight:600; font-size:13px;">${(r.label || 'Resource').replace(/</g, '&lt;')}</span>
+                  <span style="font-weight:600; font-size:13px;">${escapeFoundationsHtml(r.label || 'Resource')}</span>
                 </a>`).join('')}
             </div>
           </div>` : '';
@@ -1122,7 +1122,7 @@ import {
             <button type="button" class="foundations-session-toggle" onclick="toggleFoundationsSession(${idx})">
               <span class="foundations-session-toggle-left">
                 <span class="foundations-lesson-index">${idx + 1}</span>
-                <span class="foundations-session-title">${title.replace(/</g, '&lt;')}</span>
+                <span class="foundations-session-title">${escapeFoundationsHtml(title)}</span>
                 ${mediaChipsHtml}
               </span>
               <svg class="foundations-session-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -1259,7 +1259,7 @@ import {
           if (!(v.url || '').trim()) return;
           const sessionTitle = s.title || `Session ${sIdx + 1}`;
           const videoLabel = v.label || (sessionVideos.length > 1 ? `Video ${vIdx + 1}` : 'Video');
-          options.push(`<option value="${sIdx}:${vIdx}">${`${sessionTitle} — ${videoLabel}`.replace(/</g, '&lt;')}</option>`);
+          options.push(`<option value="${sIdx}:${vIdx}">${escapeFoundationsHtml(`${sessionTitle} — ${videoLabel}`)}</option>`);
         });
       });
       select.innerHTML = options.join('');
@@ -1292,7 +1292,7 @@ import {
       const select = document.getElementById('foundations-admin-select');
       const sorted = foundationsList.slice().sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
       select.innerHTML = '<option value="">+ Add a new class…</option>' +
-        sorted.map(item => `<option value="${item.dbId}">${item.title}</option>`).join('');
+        sorted.map(item => `<option value="${item.dbId}">${escapeFoundationsHtml(item.title)}</option>`).join('');
 
       const categoryList = document.getElementById('foundations-admin-category-list');
       if (categoryList) {
@@ -1743,7 +1743,7 @@ import {
         return `
           <label style="display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13.5px; color:${disabled ? 'var(--text-muted)' : 'var(--text-main)'}; cursor:${disabled ? 'not-allowed' : 'pointer'};">
             <input type="checkbox" style="width:16px; height:16px; margin:0; flex-shrink:0;" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} onchange="toggleFoundationsAdminSuggestion(${opt.dbId})">
-            <span>${(opt.title || 'Untitled class').replace(/</g, '&lt;')}${opt.live ? '' : ' <span style="color:var(--text-muted);">(not live)</span>'}</span>
+            <span>${escapeFoundationsHtml(opt.title || 'Untitled class')}${opt.live ? '' : ' <span style="color:var(--text-muted);">(not live)</span>'}</span>
           </label>`;
       }).join('');
     }

@@ -359,7 +359,7 @@ import {
           <input type="text" id="church-edit-url-${idAttr}" placeholder="URL..." style="width: 100%;" value="${esc(r.resource)}">
           <input type="text" id="church-edit-type-${idAttr}" placeholder="Type..." style="width: 100%;" value="${esc(r.type)}">
           <input type="text" id="church-edit-tags-${idAttr}" placeholder="Tags (e.g. Grace, Faith)..." style="width: 100%;" value="${esc(r.tags)}">
-          <textarea id="church-edit-notes-${idAttr}" placeholder="Notes..." style="width: 100%; min-height: 40px; padding: 6px 10px; font-size: 13px; font-family: 'Plus Jakarta Sans', sans-serif; border: 1px solid var(--border-color); border-radius: var(--border-radius); resize: vertical;">${(r.notes || '')}</textarea>
+          <textarea id="church-edit-notes-${idAttr}" placeholder="Notes..." style="width: 100%; min-height: 40px; padding: 6px 10px; font-size: 13px; font-family: 'Plus Jakarta Sans', sans-serif; border: 1px solid var(--border-color); border-radius: var(--border-radius); resize: vertical;">${escapeHtml(r.notes || '')}</textarea>
           <input type="text" id="church-edit-thumbnail-${idAttr}" placeholder="Custom thumbnail URL (optional)..." style="width: 100%;" value="${esc(r.thumbnail)}">
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); cursor:pointer; font-weight:normal;">
             <input type="checkbox" class="plan-checkbox" id="church-edit-hide-thumbnail-${idAttr}" ${r.thumbnailHidden ? 'checked' : ''}>Hide thumbnail
@@ -548,9 +548,16 @@ import {
 
           let titleHtml;
           if (youTubeId) {
-            const safeUrlJs = resUrl.replace(/'/g, "\\'");
-            const safeTitleJs = displayTitleText.replace(/'/g, "\\'");
-            const safeVerseRefJs = (verseRef || '').replace(/'/g, "\\'");
+            const safeUrlJs = resUrl.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            // Computed from the RAW (resTitle || resUrl), not the already
+            // HTML-escaped displayTitleText -- escapeHtml turns a literal '
+            // into &#39; before this point, so replacing "'" here would
+            // find nothing left to match; the browser decodes &#39; back
+            // to a literal ' when it hands this attribute's value to the
+            // onclick handler's JS, which would then contain an
+            // unescaped quote breaking the string literal it sits inside.
+            const safeTitleJs = (resTitle || resUrl).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeVerseRefJs = (verseRef || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
             // With a thumbnail showing, the big centered play icon (playIconHtml,
             // below) already says "this plays a video" — without one, this small
             // inline glyph in front of the title carries that same meaning.
@@ -640,8 +647,8 @@ import {
         return `<div class="resource-card expanded">${renderChurchResourceEditFormHtml(r, 'lul', r.rowIndex, r.verseRef)}</div>`;
       }
 
-      let typeBadge = r.type ? `<span class="type-tag">${r.type}</span>` : '';
-      let tagBadges = r.tags ? r.tags.split(',').map(t => `<span class="tag">${t.trim()}</span>`).join(' ') : '';
+      let typeBadge = r.type ? `<span class="type-tag">${escapeHtml(r.type)}</span>` : '';
+      let tagBadges = r.tags ? r.tags.split(',').map(t => `<span class="tag">${escapeHtml(t.trim())}</span>`).join(' ') : '';
       let displayTitle = escapeHtml(r.title || r.resource);
 
       // Same resolution used by the Note view's Church Resources column, so a
@@ -652,9 +659,12 @@ import {
 
       let titleHtml;
       if (youTubeId) {
-        const safeUrlJs = (r.resource || '').replace(/'/g, "\\'");
-        const safeTitleJs = (displayTitle || '').replace(/'/g, "\\'");
-        const safeVerseRefJs = (r.verseRef || '').replace(/'/g, "\\'");
+        const safeUrlJs = (r.resource || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        // Computed from the RAW (r.title || r.resource), not the already
+        // HTML-escaped displayTitle -- same reasoning as
+        // updateChurchResourcesDOM's own safeTitleJs above.
+        const safeTitleJs = (r.title || r.resource || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const safeVerseRefJs = (r.verseRef || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const inlinePlayIcon = thumbUrl ? '' : `<span class="church-resource-video-inline-play"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg></span>`;
         titleHtml = `<button type="button" class="church-resource-video-trigger" onclick="openChurchResourceVideo('${safeUrlJs}', '${safeTitleJs}', '${safeVerseRefJs}')" title="Play video"><span class="church-resource-video-title">${inlinePlayIcon}${displayTitle}</span></button>`;
       } else {
@@ -669,7 +679,7 @@ import {
       let notesHtml = r.notes ? `<div style="font-size: 13px; ${thumbUrl ? 'color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);' : 'color: var(--text-muted);'} margin-top: 4px; white-space: pre-wrap;">${escapeHtml(r.notes)}</div>` : '';
       const playIconHtml = (youTubeId && thumbUrl) ? `<div class="church-resource-video-playbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg></div>` : '';
 
-      let verseRefHtml = r.verseRef ? `<div style="font-size: 15px; font-family: var(--font-heading); ${thumbUrl ? 'color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.85); border-bottom-color: rgba(255,255,255,0.4);' : 'color: var(--primary-color);'} letter-spacing: 0.5px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">${r.verseRef}</div>` : '';
+      let verseRefHtml = r.verseRef ? `<div style="font-size: 15px; font-family: var(--font-heading); ${thumbUrl ? 'color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.85); border-bottom-color: rgba(255,255,255,0.4);' : 'color: var(--primary-color);'} letter-spacing: 0.5px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">${escapeHtml(r.verseRef)}</div>` : '';
 
       let adminBtns = '';
       if (currentUser && currentUser.isAdmin) {

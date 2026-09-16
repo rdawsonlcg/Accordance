@@ -1879,7 +1879,7 @@ export {
                 </select>
               </div>
             </div>
-            <textarea id="textarea-${v.rowIndex}" style="color: ${noteColor};" placeholder="Add margin note..." onfocus="if (!ensureLoggedInFor('Sign in to add margin notes.')) this.blur();" oninput="autoSaveUserNote(${v.rowIndex}, '${v.reference}')">${noteObj.text}</textarea>
+            <textarea id="textarea-${v.rowIndex}" style="color: ${noteColor};" placeholder="Add margin note..." onfocus="if (!ensureLoggedInFor('Sign in to add margin notes.')) this.blur();" oninput="autoSaveUserNote(${v.rowIndex}, '${v.reference}')">${escapeHtml(noteObj.text)}</textarea>
           </div>
           <div class="margin-note-card church-resource-column-cell" id="church-resources-card-${v.rowIndex}">
             ${currentUser && currentUser.isAdmin ? `

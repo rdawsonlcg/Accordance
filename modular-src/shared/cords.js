@@ -521,7 +521,7 @@ import {
             <input type="text" id="cord-new-username-input" class="cord-search-input" placeholder="Enter Username/Display Name" onkeypress="if(event.key==='Enter'){event.preventDefault(); addCordUsernameChip();}">
             <button class="cord-add-circle-btn" title="Add" onclick="addCordUsernameChip()">+</button>
           </div>
-          ${cordNewUsernames.length > 0 ? `<div class="cord-chip-row">${cordNewUsernames.map((u, i) => `<span class="cord-username-chip">${cordAvatarHtml(u, u, false, 18)}${u}<button onclick="removeCordUsernameChip(${i})">&times;</button></span>`).join('')}</div>` : ''}
+          ${cordNewUsernames.length > 0 ? `<div class="cord-chip-row">${cordNewUsernames.map((u, i) => `<span class="cord-username-chip">${cordAvatarHtml(u, u, false, 18)}${escapeHtml(u)}<button onclick="removeCordUsernameChip(${i})">&times;</button></span>`).join('')}</div>` : ''}
           ${cordNewUsernames.length > 1 ? `<input type="text" id="cord-group-name-input" class="cord-search-input" style="margin-top:8px; width:100%;" placeholder="Group name">` : ''}
           ${cordNewUsernames.length > 0 ? `<button class="btn" style="width:100%; margin-top:10px;" onclick="submitNewCord()">Create Cord</button>` : ''}
           <div id="cord-status-msg" style="font-size:12px; color:var(--text-muted); margin-top:6px;"></div>
@@ -534,7 +534,7 @@ import {
             <div class="cord-pending-item">
               ${cordAvatarHtml(p.name, p.avatarSeed, p.isGroup, 44)}
               <div class="cord-pending-info">
-                <span class="cord-pending-name">${p.name}</span>
+                <span class="cord-pending-name">${escapeHtml(p.name)}</span>
                 <span class="cord-pending-sub">${p.isGroup ? 'Group invite' : 'Wants to cord with you'}</span>
               </div>
               <span style="display:flex; gap:6px; flex-shrink:0;">
@@ -554,7 +554,7 @@ import {
             <div class="cord-list-item" onclick="openCordThread(${c.id})">
               ${cordAvatarHtml(c.name, c.avatarSeed, c.isGroup, 48)}
               <div class="cord-list-item-info">
-                <span class="cord-list-item-name">${c.name}</span>
+                <span class="cord-list-item-name">${escapeHtml(c.name)}</span>
                 <span class="cord-list-item-sub">${c.isGroup ? 'Group cord' : 'Direct cord'}</span>
               </div>
               <span class="cord-list-item-date">${formatCordDate(c.lastMessageAt)}</span>
@@ -603,7 +603,7 @@ import {
         <div class="cord-thread-header">
           <button class="cord-thread-back" onclick="backToCordList()" title="Back">&larr;</button>
           ${headerAvatar}
-          <span class="cord-thread-title">${title}</span>
+          <span class="cord-thread-title">${escapeHtml(title)}</span>
         </div>
         <div class="cord-messages-scroll" id="cord-messages-scroll">${messagesHtml}</div>
         <div class="cord-thread-sendbar">

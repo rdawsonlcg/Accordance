@@ -45,6 +45,10 @@ module.exports = {
     'markRecordBadgesSeen',
     'updateRecordsNotificationBadge',
     'getSeenRecordBadgeIds',
+    'renderRecordBadgePreviewCard',
+    'renderRecordBadgeCard',
+    'selectRecordBadge',
+    'describeRecordTrigger',
   ],
   // shared/cords.js
   cords: [
@@ -56,6 +60,8 @@ module.exports = {
     'updateCordNotificationBadge',
     'openCordThread',
     'getCordLastReadMap',
+    'renderCordViewBody',
+    'cordPending',
   ],
   // shared/dailyReadingTts.js
   dailyReadingTts: [

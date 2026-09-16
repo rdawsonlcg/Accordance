@@ -50,7 +50,7 @@ import {
 import {
   normalizeFoundationsMediaList, foundationsMediaItemAccordionHtml,
   renderFoundationsContentHtml, sizeFoundationsHeroVideoBg, scheduleFoundationsHeroVideoBgRecheck,
-  FOUNDATIONS_VIDEO_ICON_SVG, FOUNDATIONS_AUDIO_ICON_SVG
+  FOUNDATIONS_VIDEO_ICON_SVG, FOUNDATIONS_AUDIO_ICON_SVG, escapeFoundationsHtml
 } from './coreD.js';
 import { checkTWCourseCompletionBadges, checkTWModuleCompletionBadges } from './records.js';
 import {
@@ -373,7 +373,7 @@ export function maybeShowTWCourseCompletionModal() {
             <div style="display:flex; align-items:center; gap:14px; min-width:0;">
               <span class="tw-module-index">${isComplete ? TW_CHECK_SVG : (idx + 1)}</span>
               <div style="min-width:0;">
-                <div class="tw-module-title">${(mod.title || '').replace(/</g, '&lt;')}</div>
+                <div class="tw-module-title">${escapeFoundationsHtml(mod.title || '')}</div>
                 <div class="tw-module-meta">${metaText}</div>
               </div>
             </div>
@@ -453,7 +453,7 @@ export function maybeShowTWCourseCompletionModal() {
       const heroPresenterHtml = mod.presenter ? `
         <div class="foundations-hero-presenter">
           ${mod.presenterPhotoUrl ? `<img src="${mod.presenterPhotoUrl.replace(/"/g, '&quot;')}" alt="${mod.presenter.replace(/"/g, '&quot;')}">` : ''}
-          <span>With ${mod.presenter.replace(/</g, '&lt;')}</span>
+          <span>With ${escapeFoundationsHtml(mod.presenter)}</span>
         </div>` : '';
 
       // The hero Play button only ever offers an UNLOCKED lesson's video —
@@ -477,7 +477,7 @@ export function maybeShowTWCourseCompletionModal() {
           </div>
           <div class="foundations-hero-content">
             <span class="foundations-hero-category">TW Bible Course</span>
-            <h3 class="foundations-hero-title">${(mod.title || '').replace(/</g, '&lt;')}</h3>
+            <h3 class="foundations-hero-title">${escapeFoundationsHtml(mod.title || '')}</h3>
             ${heroPresenterHtml}
             <div class="foundations-hero-actions">${heroPlayBtnHtml}</div>
           </div>
@@ -558,7 +558,7 @@ export function maybeShowTWCourseCompletionModal() {
               ${resources.map(r => `
                 <a href="${r.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:8px; background: var(--bg-color); border:1px solid var(--border-color); padding:8px 12px; border-radius:8px; text-decoration:none; color:var(--text-main);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                  <span style="font-weight:600; font-size:13px;">${(r.label || 'Resource').replace(/</g, '&lt;')}</span>
+                  <span style="font-weight:600; font-size:13px;">${escapeFoundationsHtml(r.label || 'Resource')}</span>
                 </a>`).join('')}
             </div>
           </div>` : '';
@@ -590,7 +590,7 @@ export function maybeShowTWCourseCompletionModal() {
             <button type="button" class="foundations-session-toggle" ${unlocked ? `onclick="toggleTWLesson(${idx})"` : `style="cursor:not-allowed;" title="Complete the previous lesson first"`}>
               <span class="foundations-session-toggle-left">
                 <span class="foundations-lesson-index">${idx + 1}</span>
-                <span class="foundations-session-title">${title.replace(/</g, '&lt;')}</span>
+                <span class="foundations-session-title">${escapeFoundationsHtml(title)}</span>
                 ${mediaChipsHtml}
                 ${statusIconHtml}
               </span>
@@ -811,7 +811,7 @@ export function maybeShowTWCourseCompletionModal() {
           if (!(v.url || '').trim()) return;
           const lessonTitle = l.title || `Lesson ${lIdx + 1}`;
           const videoLabel = v.label || (lessonVideos.length > 1 ? `Video ${vIdx + 1}` : 'Video');
-          options.push(`<option value="${lIdx}:${vIdx}">${`${lessonTitle} — ${videoLabel}`.replace(/</g, '&lt;')}</option>`);
+          options.push(`<option value="${lIdx}:${vIdx}">${escapeHtml(`${lessonTitle} — ${videoLabel}`)}</option>`);
         });
       });
       select.innerHTML = options.join('');

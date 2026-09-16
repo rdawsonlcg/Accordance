@@ -2916,7 +2916,7 @@ ${md}
     }
     document.querySelectorAll(".study-presenter-picker").forEach((select) => {
       const current = select.value;
-      select.innerHTML = `<option value="">${placeholder}</option>` + studyPresentersList.map((p) => `<option value="${p.id}">${(p.name || "").replace(/</g, "&lt;")}</option>`).join("");
+      select.innerHTML = `<option value="">${placeholder}</option>` + studyPresentersList.map((p) => `<option value="${p.id}">${escapeHtml(p.name || "")}</option>`).join("");
       select.value = current && studyPresentersList.some((p) => String(p.id) === current) ? current : "";
     });
     document.querySelectorAll(".study-presenter-picker-error-note").forEach((note) => {
@@ -3211,14 +3211,16 @@ ${md}
       const clickable = cfg.presenters.length > 1;
       const isActive = activeStudyPresenterFilter === p.name;
       const safeName = p.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      const escapedName = escapeHtml(p.name);
+      const escapedPhoto = escapeHtml(p.photo);
       return `
             <div class="${clickable ? "study-presenter-chip" : ""} ${clickable && isActive ? "active" : ""}"
                  style="display:flex; align-items:center; gap:10px; flex-shrink:0; white-space:nowrap; ${clickable ? "cursor:pointer;" : ""}"
-                 ${clickable ? `onclick="toggleStudyPresenterFilter('${safeName}')" title="Filter by ${p.name.replace(/"/g, "&quot;")}"` : ""}>
-              <img src="${p.photo.replace(/"/g, "&quot;")}" alt="${p.name.replace(/"/g, "&quot;")}" style="width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid ${clickable && isActive ? "var(--primary-color)" : "var(--border-color)"}; flex-shrink:0;">
+                 ${clickable ? `onclick="toggleStudyPresenterFilter('${safeName}')" title="Filter by ${escapedName}"` : ""}>
+              <img src="${escapedPhoto}" alt="${escapedName}" style="width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid ${clickable && isActive ? "var(--primary-color)" : "var(--border-color)"}; flex-shrink:0;">
               <div>
                 <div style="font-size:12px; color:var(--text-muted);">Presented by</div>
-                <div style="font-weight:700; color:var(--text-main);">${p.name}</div>
+                <div style="font-weight:700; color:var(--text-main);">${escapedName}</div>
               </div>
             </div>`;
     }).join("")}
@@ -3255,7 +3257,7 @@ ${md}
       sessionsHtml = visibleSessions.map((s, i) => {
         const type = getSessionType(s);
         const originalIndex = allSessions.indexOf(s);
-        const safeBookTitle = cfg.title.replace(/'/g, "\\'");
+        const safeBookTitle = cfg.title.replace(/'/g, "\\'").replace(/"/g, "&quot;");
         let mediaHtml;
         if (type === "video" && s.video) {
           const embedUrl = isDirectVideoUrl(s.video) || toYouTubeEmbedUrl(s.video);
@@ -3300,14 +3302,14 @@ ${md}
         }
         const sessionPresenterHtml = s.presenter ? `
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-              <img src="${s.presenter.photo.replace(/"/g, "&quot;")}" alt="${s.presenter.name.replace(/"/g, "&quot;")}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color);">
-              <span style="font-size:12px; color:var(--text-muted);">${s.presenter.name}</span>
+              <img src="${escapeHtml(s.presenter.photo)}" alt="${escapeHtml(s.presenter.name)}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color);">
+              <span style="font-size:12px; color:var(--text-muted);">${escapeHtml(s.presenter.name)}</span>
             </div>` : "";
-        const safeSessionTitle = (s.title || "").replace(/'/g, "\\'");
+        const safeSessionTitle = (s.title || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
         return `
             <div id="book-session-${originalIndex}" style="margin-bottom:14px;">
               <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:6px;">
-                <div style="font-weight:600; font-size:14px; color:var(--text-main);">${s.title}</div>
+                <div style="font-weight:600; font-size:14px; color:var(--text-main);">${escapeHtml(s.title)}</div>
                 <button class="share-btn" title="Share this resource" style="flex-shrink:0;" onclick="shareBookSession('${safeBookTitle}', ${originalIndex}, '${safeSessionTitle}')">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                 </button>
@@ -3377,7 +3379,7 @@ ${md}
   function populateBookAdminShelfGroupSelect(selectedId) {
     const select = document.getElementById("book-admin-shelf-group");
     if (!select) return;
-    select.innerHTML = `<option value="">No group (set this book's own color &amp; height below)</option>` + bookShelfGroupsList.map((g) => `<option value="${g.id}">${(g.name || "").replace(/</g, "&lt;")}</option>`).join("") + `<option value="__new__">+ New group\u2026</option>`;
+    select.innerHTML = `<option value="">No group (set this book's own color &amp; height below)</option>` + bookShelfGroupsList.map((g) => `<option value="${g.id}">${escapeHtml(g.name || "")}</option>`).join("") + `<option value="__new__">+ New group\u2026</option>`;
     select.value = selectedId != null && bookShelfGroupsList.some((g) => g.id === selectedId) ? String(selectedId) : "";
     handleBookAdminShelfGroupChange();
   }
@@ -3938,7 +3940,7 @@ ${titlesToImport.join(", ")}`)) return;
     return `<div class="foundations-nx-thumb-fallback" style="background:${foundationsCategoryColor(item.category)};">${initial}</div>`;
   }
   function foundationsNxCardHtml(item) {
-    const safeTitle = (item.title || "").replace(/</g, "&lt;");
+    const safeTitle = escapeFoundationsHtml(item.title || "");
     const heroVideo = getFoundationsHeroVideo(item);
     const heroPreviewEmbedUrl = heroVideo ? toYouTubeMutedPreviewEmbedUrl((item.sessions[heroVideo.sessionIdx].video || [])[heroVideo.videoIdx].url) : null;
     return `
@@ -3947,13 +3949,13 @@ ${titlesToImport.join(", ")}`)) return;
             ${foundationsNxThumbHtml(item)}
             ${heroPreviewEmbedUrl ? `<div class="foundations-nx-video-bg"><iframe src="${heroPreviewEmbedUrl}" allow="autoplay; encrypted-media" loading="lazy" tabindex="-1"></iframe></div>` : ""}
             ${item.isNew ? '<span class="foundations-nx-new-badge">New</span>' : ""}
-            <button class="foundations-nx-share-btn" title="Share this class" onclick="event.stopPropagation(); shareFoundationsClass(${item.dbId}, '${(item.title || "").replace(/'/g, "\\'")}')">
+            <button class="foundations-nx-share-btn" title="Share this class" onclick="event.stopPropagation(); shareFoundationsClass(${item.dbId}, '${(item.title || "").replace(/'/g, "\\'").replace(/"/g, "&quot;")}')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
             </button>
           </div>
           <div class="foundations-nx-info">
             <div class="foundations-nx-title">${safeTitle}</div>
-            <div class="foundations-nx-meta">${item.presenter ? `With ${item.presenter}` : item.category || "General"}</div>
+            <div class="foundations-nx-meta">${item.presenter ? `With ${escapeFoundationsHtml(item.presenter)}` : escapeFoundationsHtml(item.category || "General")}</div>
           </div>
         </div>`;
   }
@@ -3993,7 +3995,7 @@ ${titlesToImport.join(", ")}`)) return;
       listEl.innerHTML = `<div class="foundations-rows">${categoryNames.map((cat) => `
           <div class="foundations-row">
             <div class="foundations-row-header">
-              <div class="foundations-row-title">${cat.replace(/</g, "&lt;")}</div>
+              <div class="foundations-row-title">${escapeFoundationsHtml(cat)}</div>
               <div class="foundations-row-nav">
                 <button type="button" class="foundations-row-nav-btn" onclick="scrollFoundationsRow(this, -1)" aria-label="Scroll left">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -4043,13 +4045,13 @@ ${titlesToImport.join(", ")}`)) return;
     const item = foundationsList.find((i) => i.dbId === activeFoundationsItemId);
     const panel = document.getElementById("foundations-detail-panel");
     if (!item || !panel) return;
-    const safeTitle = (item.title || "").replace(/'/g, "\\'");
+    const safeTitle = (item.title || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
     const sessions = item.sessions || [];
     const firstVideo = getFoundationsHeroVideo(item);
     const heroPresenterHtml = item.presenter ? `
         <div class="foundations-hero-presenter">
           ${item.presenterPhotoUrl ? `<img src="${item.presenterPhotoUrl.replace(/"/g, "&quot;")}" alt="${item.presenter.replace(/"/g, "&quot;")}">` : ""}
-          <span>With ${item.presenter.replace(/</g, "&lt;")}</span>
+          <span>With ${escapeFoundationsHtml(item.presenter)}</span>
         </div>` : "";
     const heroPlayBtnHtml = firstVideo ? `
         <button type="button" class="foundations-hero-play-btn" onclick="openFoundationsVideoPlayer(${item.dbId}, ${firstVideo.sessionIdx}, ${firstVideo.videoIdx})">
@@ -4071,8 +4073,8 @@ ${titlesToImport.join(", ")}`)) return;
             </button>
           </div>
           <div class="foundations-hero-content">
-            <span class="foundations-hero-category">${(item.category || "General").replace(/</g, "&lt;")}</span>
-            <h3 class="foundations-hero-title">${(item.title || "").replace(/</g, "&lt;")}</h3>
+            <span class="foundations-hero-category">${escapeFoundationsHtml(item.category || "General")}</span>
+            <h3 class="foundations-hero-title">${escapeFoundationsHtml(item.title || "")}</h3>
             ${heroPresenterHtml}
             <div class="foundations-hero-actions">${heroPlayBtnHtml}</div>
           </div>
@@ -4123,9 +4125,9 @@ ${titlesToImport.join(", ")}`)) return;
         <div class="foundations-suggestion-card" onclick="openFoundationsItem(${s.dbId})">
           <div class="foundations-card-thumb-wrap">${foundationsCardThumbHtml(s)}</div>
           <div class="foundations-card-info">
-            <div class="foundations-card-title">${s.title}</div>
-            ${s.presenter ? `<div class="foundations-card-presenter">With ${s.presenter}</div>` : ""}
-            <div class="foundations-card-meta">Class \u2022 ${s.category || "General"}</div>
+            <div class="foundations-card-title">${escapeFoundationsHtml(s.title)}</div>
+            ${s.presenter ? `<div class="foundations-card-presenter">With ${escapeFoundationsHtml(s.presenter)}</div>` : ""}
+            <div class="foundations-card-meta">Class \u2022 ${escapeFoundationsHtml(s.category || "General")}</div>
           </div>
         </div>
       `).join("");
@@ -4377,7 +4379,7 @@ ${titlesToImport.join(", ")}`)) return;
       const sessionPresenterHtml = session.presenter && session.presenter.name ? `
           <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
             ${session.presenter.photo ? `<img src="${session.presenter.photo.replace(/"/g, "&quot;")}" alt="${session.presenter.name.replace(/"/g, "&quot;")}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid var(--border-color); flex-shrink:0;">` : ""}
-            <span style="font-size:12px; color:var(--text-muted);">Presented by ${session.presenter.name.replace(/</g, "&lt;")}</span>
+            <span style="font-size:12px; color:var(--text-muted);">Presented by ${escapeFoundationsHtml(session.presenter.name)}</span>
           </div>` : "";
       const contentHtml = session.content ? `<div class="foundations-detail-body" style="margin-bottom:12px;">${renderFoundationsContentHtml(session.content)}</div>` : "";
       let mediaHtml = "";
@@ -4416,7 +4418,7 @@ ${titlesToImport.join(", ")}`)) return;
               ${resources.map((r) => `
                 <a href="${r.url.replace(/"/g, "&quot;")}" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:8px; background: var(--bg-color); border:1px solid var(--border-color); padding:8px 12px; border-radius:8px; text-decoration:none; color:var(--text-main);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                  <span style="font-weight:600; font-size:13px;">${(r.label || "Resource").replace(/</g, "&lt;")}</span>
+                  <span style="font-weight:600; font-size:13px;">${escapeFoundationsHtml(r.label || "Resource")}</span>
                 </a>`).join("")}
             </div>
           </div>` : "";
@@ -4434,7 +4436,7 @@ ${titlesToImport.join(", ")}`)) return;
             <button type="button" class="foundations-session-toggle" onclick="toggleFoundationsSession(${idx})">
               <span class="foundations-session-toggle-left">
                 <span class="foundations-lesson-index">${idx + 1}</span>
-                <span class="foundations-session-title">${title.replace(/</g, "&lt;")}</span>
+                <span class="foundations-session-title">${escapeFoundationsHtml(title)}</span>
                 ${mediaChipsHtml}
               </span>
               <svg class="foundations-session-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -4530,7 +4532,7 @@ ${titlesToImport.join(", ")}`)) return;
         if (!(v.url || "").trim()) return;
         const sessionTitle = s.title || `Session ${sIdx + 1}`;
         const videoLabel = v.label || (sessionVideos.length > 1 ? `Video ${vIdx + 1}` : "Video");
-        options.push(`<option value="${sIdx}:${vIdx}">${`${sessionTitle} \u2014 ${videoLabel}`.replace(/</g, "&lt;")}</option>`);
+        options.push(`<option value="${sIdx}:${vIdx}">${escapeFoundationsHtml(`${sessionTitle} \u2014 ${videoLabel}`)}</option>`);
       });
     });
     select.innerHTML = options.join("");
@@ -4553,7 +4555,7 @@ ${titlesToImport.join(", ")}`)) return;
     populateStudyPresenterDropdowns();
     const select = document.getElementById("foundations-admin-select");
     const sorted = foundationsList.slice().sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
-    select.innerHTML = '<option value="">+ Add a new class\u2026</option>' + sorted.map((item) => `<option value="${item.dbId}">${item.title}</option>`).join("");
+    select.innerHTML = '<option value="">+ Add a new class\u2026</option>' + sorted.map((item) => `<option value="${item.dbId}">${escapeFoundationsHtml(item.title)}</option>`).join("");
     const categoryList = document.getElementById("foundations-admin-category-list");
     if (categoryList) {
       categoryList.innerHTML = getFoundationsCategories().filter((c) => c !== "All").map((c) => `<option value="${c}"></option>`).join("");
@@ -4918,7 +4920,7 @@ ${titlesToImport.join(", ")}`)) return;
       return `
           <label style="display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13.5px; color:${disabled ? "var(--text-muted)" : "var(--text-main)"}; cursor:${disabled ? "not-allowed" : "pointer"};">
             <input type="checkbox" style="width:16px; height:16px; margin:0; flex-shrink:0;" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} onchange="toggleFoundationsAdminSuggestion(${opt.dbId})">
-            <span>${(opt.title || "Untitled class").replace(/</g, "&lt;")}${opt.live ? "" : ' <span style="color:var(--text-muted);">(not live)</span>'}</span>
+            <span>${escapeFoundationsHtml(opt.title || "Untitled class")}${opt.live ? "" : ' <span style="color:var(--text-muted);">(not live)</span>'}</span>
           </label>`;
     }).join("");
   }
@@ -5446,7 +5448,7 @@ ${titlesToImport.join(", ")}`)) return;
           <div class="record-badge-icon-circle">
             <span class="record-badge-icon">${achieved ? renderRecordIconHtml(badge.icon) : RECORD_BADGE_LOCK_SVG}</span>
           </div>
-          <div class="record-badge-title">${badge.title}</div>
+          <div class="record-badge-title">${escapeHtml(badge.title)}</div>
         </div>`;
   }
   function updateRecordAdminBadgePreview() {
@@ -5476,14 +5478,14 @@ ${titlesToImport.join(", ")}`)) return;
       case "margin_notes_count":
         return typeof cfg.threshold === "number" ? `Save ${cfg.threshold} margin note${cfg.threshold === 1 ? "" : "s"}.` : "";
       case "reading_plan_completed":
-        return cfg.schedule_name ? `Complete the "${cfg.schedule_name}" reading plan.` : "";
+        return cfg.schedule_name ? `Complete the "${escapeHtml(cfg.schedule_name)}" reading plan.` : "";
       case "book_resources_clicked":
-        return cfg.book ? `Explore every resource in the book of ${cfg.book} (Study tab \u2192 Books of the Bible).` : "";
+        return cfg.book ? `Explore every resource in the book of ${escapeHtml(cfg.book)} (Study tab \u2192 Books of the Bible).` : "";
       case "book_group_resources_clicked":
-        return cfg.books && cfg.books.length ? `Explore every resource in each of: ${cfg.books.join(", ")}.` : "";
+        return cfg.books && cfg.books.length ? `Explore every resource in each of: ${cfg.books.map(escapeHtml).join(", ")}.` : "";
       case "tw_module_completed": {
         const mod = cfg.module_key ? twBibleCourseData.find((m) => m.id === cfg.module_key) : null;
-        return mod ? `Complete the "${mod.title}" module of the TW Bible Course.` : "";
+        return mod ? `Complete the "${escapeHtml(mod.title)}" module of the TW Bible Course.` : "";
       }
       case "tw_course_completed":
         return "Complete every module of the TW Bible Course.";
@@ -5600,7 +5602,7 @@ ${titlesToImport.join(", ")}`)) return;
     const rec = userRecordsMap[badge.id];
     const achieved = !!rec;
     const showTally = achieved && badge.tallied && rec.count > 1;
-    const safeTitle = (badge.title || "").replace(/"/g, "&quot;");
+    const safeTitle = escapeHtml(badge.title || "");
     const hue = getRecordBadgeHueColor(badge);
     let cornerHtml = "";
     if (achieved) {
@@ -5622,7 +5624,7 @@ ${titlesToImport.join(", ")}`)) return;
           <div class="record-badge-icon-circle">
             <span class="record-badge-icon">${achieved ? renderRecordIconHtml(badge.icon) : RECORD_BADGE_LOCK_SVG}</span>
           </div>
-          <div class="record-badge-title">${badge.title}</div>
+          <div class="record-badge-title">${safeTitle}</div>
           ${progressHtml}
         </div>`;
   }
@@ -5649,7 +5651,7 @@ ${titlesToImport.join(", ")}`)) return;
       }).join("");
       return `
           <div class="record-section">
-            <div class="record-section-header">${(sectionName || "").replace(/</g, "&lt;")}</div>
+            <div class="record-section-header">${escapeHtml(sectionName || "")}</div>
             <div class="record-grid">${itemsHtml}</div>
             <div class="record-section-detail" id="record-section-detail-${sectionIndex}" style="display:none;"></div>
           </div>`;
@@ -5685,9 +5687,9 @@ ${titlesToImport.join(", ")}`)) return;
         <div class="book-admin-item-card" style="background:var(--card-bg);">
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
             <span style="font-size:28px; line-height:1;">${renderRecordIconHtml(badge.icon)}</span>
-            <div style="font-family: var(--font-heading); font-size:22px; color:var(--text-main);">${badge.title}</div>
+            <div style="font-family: var(--font-heading); font-size:22px; color:var(--text-main);">${escapeHtml(badge.title)}</div>
           </div>
-          <div style="font-size:14px; color:var(--text-main); margin-bottom:8px;">${badge.description || ""}</div>
+          <div style="font-size:14px; color:var(--text-main); margin-bottom:8px;">${escapeHtml(badge.description || "")}</div>
           ${statusLine}
         </div>`;
     panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -5723,7 +5725,7 @@ ${titlesToImport.join(", ")}`)) return;
   }
   function populateRecordAdminEditSelect() {
     const select = document.getElementById("record-admin-edit-select");
-    select.innerHTML = '<option value="">\u2014 New Badge \u2014</option>' + recordBadgesList.map((b) => `<option value="${b.id}">${(b.title || "").replace(/</g, "&lt;")}</option>`).join("");
+    select.innerHTML = '<option value="">\u2014 New Badge \u2014</option>' + recordBadgesList.map((b) => `<option value="${b.id}">${escapeHtml(b.title || "")}</option>`).join("");
   }
   function populateRecordAdminSectionList() {
     const list = document.getElementById("record-admin-section-list");
@@ -5786,7 +5788,7 @@ ${titlesToImport.join(", ")}`)) return;
   function populateRecordAdminTWModuleField() {
     const select = document.getElementById("record-admin-tw-module");
     if (!select) return;
-    select.innerHTML = twBibleCourseData.map((mod) => `<option value="${mod.id}">${(mod.title || "").replace(/</g, "&lt;")}</option>`).join("");
+    select.innerHTML = twBibleCourseData.map((mod) => `<option value="${mod.id}">${escapeHtml(mod.title || "")}</option>`).join("");
   }
   function populateRecordAdminBookFields() {
     const bookSelect = document.getElementById("record-admin-book");
@@ -6099,7 +6101,7 @@ ${titlesToImport.join(", ")}`)) return;
             <div style="display:flex; align-items:center; gap:14px; min-width:0;">
               <span class="tw-module-index">${isComplete ? TW_CHECK_SVG : idx + 1}</span>
               <div style="min-width:0;">
-                <div class="tw-module-title">${(mod.title || "").replace(/</g, "&lt;")}</div>
+                <div class="tw-module-title">${escapeFoundationsHtml(mod.title || "")}</div>
                 <div class="tw-module-meta">${metaText}</div>
               </div>
             </div>
@@ -6154,7 +6156,7 @@ ${titlesToImport.join(", ")}`)) return;
     const heroPresenterHtml = mod.presenter ? `
         <div class="foundations-hero-presenter">
           ${mod.presenterPhotoUrl ? `<img src="${mod.presenterPhotoUrl.replace(/"/g, "&quot;")}" alt="${mod.presenter.replace(/"/g, "&quot;")}">` : ""}
-          <span>With ${mod.presenter.replace(/</g, "&lt;")}</span>
+          <span>With ${escapeFoundationsHtml(mod.presenter)}</span>
         </div>` : "";
     const heroPlayBtnHtml = heroVideo && isTWLessonUnlocked(mod, heroVideo.lessonIdx) ? `
         <button type="button" class="foundations-hero-play-btn" onclick="openTWLessonVideo('${mod.id.replace(/'/g, "\\'")}', ${heroVideo.lessonIdx}, ${heroVideo.videoIdx})">
@@ -6173,7 +6175,7 @@ ${titlesToImport.join(", ")}`)) return;
           </div>
           <div class="foundations-hero-content">
             <span class="foundations-hero-category">TW Bible Course</span>
-            <h3 class="foundations-hero-title">${(mod.title || "").replace(/</g, "&lt;")}</h3>
+            <h3 class="foundations-hero-title">${escapeFoundationsHtml(mod.title || "")}</h3>
             ${heroPresenterHtml}
             <div class="foundations-hero-actions">${heroPlayBtnHtml}</div>
           </div>
@@ -6244,7 +6246,7 @@ ${titlesToImport.join(", ")}`)) return;
               ${resources.map((r) => `
                 <a href="${r.url.replace(/"/g, "&quot;")}" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:8px; background: var(--bg-color); border:1px solid var(--border-color); padding:8px 12px; border-radius:8px; text-decoration:none; color:var(--text-main);">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                  <span style="font-weight:600; font-size:13px;">${(r.label || "Resource").replace(/</g, "&lt;")}</span>
+                  <span style="font-weight:600; font-size:13px;">${escapeFoundationsHtml(r.label || "Resource")}</span>
                 </a>`).join("")}
             </div>
           </div>` : "";
@@ -6260,7 +6262,7 @@ ${titlesToImport.join(", ")}`)) return;
             <button type="button" class="foundations-session-toggle" ${unlocked ? `onclick="toggleTWLesson(${idx})"` : `style="cursor:not-allowed;" title="Complete the previous lesson first"`}>
               <span class="foundations-session-toggle-left">
                 <span class="foundations-lesson-index">${idx + 1}</span>
-                <span class="foundations-session-title">${title.replace(/</g, "&lt;")}</span>
+                <span class="foundations-session-title">${escapeFoundationsHtml(title)}</span>
                 ${mediaChipsHtml}
                 ${statusIconHtml}
               </span>
@@ -6400,7 +6402,7 @@ ${titlesToImport.join(", ")}`)) return;
         if (!(v.url || "").trim()) return;
         const lessonTitle = l.title || `Lesson ${lIdx + 1}`;
         const videoLabel = v.label || (lessonVideos.length > 1 ? `Video ${vIdx + 1}` : "Video");
-        options.push(`<option value="${lIdx}:${vIdx}">${`${lessonTitle} \u2014 ${videoLabel}`.replace(/</g, "&lt;")}</option>`);
+        options.push(`<option value="${lIdx}:${vIdx}">${escapeHtml(`${lessonTitle} \u2014 ${videoLabel}`)}</option>`);
       });
     });
     select.innerHTML = options.join("");
@@ -7398,7 +7400,7 @@ ${titlesToImport.join(", ")}`)) return;
     const panel = document.getElementById("fsv-playlist-panel");
     if (!panel || !fsvState) return;
     panel.innerHTML = fsvState.videos.map((v, i) => `
-        <div class="fsv-playlist-item${i === fsvState.index ? " active" : ""}" onclick="fsvJumpTo(${i})">${(v.label || `Video ${i + 1}`).replace(/</g, "&lt;")}</div>
+        <div class="fsv-playlist-item${i === fsvState.index ? " active" : ""}" onclick="fsvJumpTo(${i})">${escapeHtml(v.label || `Video ${i + 1}`)}</div>
       `).join("");
   }
   function toggleFsvPlaylist() {
@@ -8094,7 +8096,7 @@ ${titlesToImport.join(", ")}`)) return;
           <input type="text" id="church-edit-url-${idAttr}" placeholder="URL..." style="width: 100%;" value="${esc(r.resource)}">
           <input type="text" id="church-edit-type-${idAttr}" placeholder="Type..." style="width: 100%;" value="${esc(r.type)}">
           <input type="text" id="church-edit-tags-${idAttr}" placeholder="Tags (e.g. Grace, Faith)..." style="width: 100%;" value="${esc(r.tags)}">
-          <textarea id="church-edit-notes-${idAttr}" placeholder="Notes..." style="width: 100%; min-height: 40px; padding: 6px 10px; font-size: 13px; font-family: 'Plus Jakarta Sans', sans-serif; border: 1px solid var(--border-color); border-radius: var(--border-radius); resize: vertical;">${r.notes || ""}</textarea>
+          <textarea id="church-edit-notes-${idAttr}" placeholder="Notes..." style="width: 100%; min-height: 40px; padding: 6px 10px; font-size: 13px; font-family: 'Plus Jakarta Sans', sans-serif; border: 1px solid var(--border-color); border-radius: var(--border-radius); resize: vertical;">${escapeHtml(r.notes || "")}</textarea>
           <input type="text" id="church-edit-thumbnail-${idAttr}" placeholder="Custom thumbnail URL (optional)..." style="width: 100%;" value="${esc(r.thumbnail)}">
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); cursor:pointer; font-weight:normal;">
             <input type="checkbox" class="plan-checkbox" id="church-edit-hide-thumbnail-${idAttr}" ${r.thumbnailHidden ? "checked" : ""}>Hide thumbnail
@@ -8231,9 +8233,9 @@ ${titlesToImport.join(", ")}`)) return;
         const thumbUrl = resolveChurchResourceThumbnail(crData);
         let titleHtml;
         if (youTubeId) {
-          const safeUrlJs = resUrl.replace(/'/g, "\\'");
-          const safeTitleJs = displayTitleText.replace(/'/g, "\\'");
-          const safeVerseRefJs = (verseRef || "").replace(/'/g, "\\'");
+          const safeUrlJs = resUrl.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+          const safeTitleJs = (resTitle || resUrl).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+          const safeVerseRefJs = (verseRef || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
           const inlinePlayIcon = thumbUrl ? "" : `<span class="church-resource-video-inline-play"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg></span>`;
           titleHtml = `<button type="button" class="church-resource-video-trigger" onclick="openChurchResourceVideo('${safeUrlJs}', '${safeTitleJs}', '${safeVerseRefJs}')" title="Play video">
               <span class="church-resource-video-title" style="font-size: 16px; font-weight: bold; font-family: 'Plus Jakarta Sans', sans-serif;">${inlinePlayIcon}${displayTitleText}</span>
@@ -8285,16 +8287,16 @@ ${titlesToImport.join(", ")}`)) return;
     if (currentUser && currentUser.isAdmin && editingChurchResourceId === r.id) {
       return `<div class="resource-card expanded">${renderChurchResourceEditFormHtml(r, "lul", r.rowIndex, r.verseRef)}</div>`;
     }
-    let typeBadge = r.type ? `<span class="type-tag">${r.type}</span>` : "";
-    let tagBadges = r.tags ? r.tags.split(",").map((t) => `<span class="tag">${t.trim()}</span>`).join(" ") : "";
+    let typeBadge = r.type ? `<span class="type-tag">${escapeHtml(r.type)}</span>` : "";
+    let tagBadges = r.tags ? r.tags.split(",").map((t) => `<span class="tag">${escapeHtml(t.trim())}</span>`).join(" ") : "";
     let displayTitle = escapeHtml(r.title || r.resource);
     const youTubeId = r.resource ? getYouTubeVideoId(r.resource) : null;
     const thumbUrl = resolveChurchResourceThumbnail(r);
     let titleHtml;
     if (youTubeId) {
-      const safeUrlJs = (r.resource || "").replace(/'/g, "\\'");
-      const safeTitleJs = (displayTitle || "").replace(/'/g, "\\'");
-      const safeVerseRefJs = (r.verseRef || "").replace(/'/g, "\\'");
+      const safeUrlJs = (r.resource || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      const safeTitleJs = (r.title || r.resource || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      const safeVerseRefJs = (r.verseRef || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
       const inlinePlayIcon = thumbUrl ? "" : `<span class="church-resource-video-inline-play"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg></span>`;
       titleHtml = `<button type="button" class="church-resource-video-trigger" onclick="openChurchResourceVideo('${safeUrlJs}', '${safeTitleJs}', '${safeVerseRefJs}')" title="Play video"><span class="church-resource-video-title">${inlinePlayIcon}${displayTitle}</span></button>`;
     } else {
@@ -8304,7 +8306,7 @@ ${titlesToImport.join(", ")}`)) return;
     }
     let notesHtml = r.notes ? `<div style="font-size: 13px; ${thumbUrl ? "color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);" : "color: var(--text-muted);"} margin-top: 4px; white-space: pre-wrap;">${escapeHtml(r.notes)}</div>` : "";
     const playIconHtml = youTubeId && thumbUrl ? `<div class="church-resource-video-playbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg></div>` : "";
-    let verseRefHtml = r.verseRef ? `<div style="font-size: 15px; font-family: var(--font-heading); ${thumbUrl ? "color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.85); border-bottom-color: rgba(255,255,255,0.4);" : "color: var(--primary-color);"} letter-spacing: 0.5px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">${r.verseRef}</div>` : "";
+    let verseRefHtml = r.verseRef ? `<div style="font-size: 15px; font-family: var(--font-heading); ${thumbUrl ? "color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.85); border-bottom-color: rgba(255,255,255,0.4);" : "color: var(--primary-color);"} letter-spacing: 0.5px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">${escapeHtml(r.verseRef)}</div>` : "";
     let adminBtns = "";
     if (currentUser && currentUser.isAdmin) {
       let safeRef = r.verseRef ? r.verseRef.replace(/'/g, "\\'") : "";
@@ -8903,7 +8905,7 @@ ${url}`;
             <input type="text" id="cord-new-username-input" class="cord-search-input" placeholder="Enter Username/Display Name" onkeypress="if(event.key==='Enter'){event.preventDefault(); addCordUsernameChip();}">
             <button class="cord-add-circle-btn" title="Add" onclick="addCordUsernameChip()">+</button>
           </div>
-          ${cordNewUsernames.length > 0 ? `<div class="cord-chip-row">${cordNewUsernames.map((u, i) => `<span class="cord-username-chip">${cordAvatarHtml(u, u, false, 18)}${u}<button onclick="removeCordUsernameChip(${i})">&times;</button></span>`).join("")}</div>` : ""}
+          ${cordNewUsernames.length > 0 ? `<div class="cord-chip-row">${cordNewUsernames.map((u, i) => `<span class="cord-username-chip">${cordAvatarHtml(u, u, false, 18)}${escapeHtml(u)}<button onclick="removeCordUsernameChip(${i})">&times;</button></span>`).join("")}</div>` : ""}
           ${cordNewUsernames.length > 1 ? `<input type="text" id="cord-group-name-input" class="cord-search-input" style="margin-top:8px; width:100%;" placeholder="Group name">` : ""}
           ${cordNewUsernames.length > 0 ? `<button class="btn" style="width:100%; margin-top:10px;" onclick="submitNewCord()">Create Cord</button>` : ""}
           <div id="cord-status-msg" style="font-size:12px; color:var(--text-muted); margin-top:6px;"></div>
@@ -8915,7 +8917,7 @@ ${url}`;
             <div class="cord-pending-item">
               ${cordAvatarHtml(p.name, p.avatarSeed, p.isGroup, 44)}
               <div class="cord-pending-info">
-                <span class="cord-pending-name">${p.name}</span>
+                <span class="cord-pending-name">${escapeHtml(p.name)}</span>
                 <span class="cord-pending-sub">${p.isGroup ? "Group invite" : "Wants to cord with you"}</span>
               </div>
               <span style="display:flex; gap:6px; flex-shrink:0;">
@@ -8934,7 +8936,7 @@ ${url}`;
             <div class="cord-list-item" onclick="openCordThread(${c.id})">
               ${cordAvatarHtml(c.name, c.avatarSeed, c.isGroup, 48)}
               <div class="cord-list-item-info">
-                <span class="cord-list-item-name">${c.name}</span>
+                <span class="cord-list-item-name">${escapeHtml(c.name)}</span>
                 <span class="cord-list-item-sub">${c.isGroup ? "Group cord" : "Direct cord"}</span>
               </div>
               <span class="cord-list-item-date">${formatCordDate(c.lastMessageAt)}</span>
@@ -8972,7 +8974,7 @@ ${url}`;
         <div class="cord-thread-header">
           <button class="cord-thread-back" onclick="backToCordList()" title="Back">&larr;</button>
           ${headerAvatar}
-          <span class="cord-thread-title">${title}</span>
+          <span class="cord-thread-title">${escapeHtml(title)}</span>
         </div>
         <div class="cord-messages-scroll" id="cord-messages-scroll">${messagesHtml}</div>
         <div class="cord-thread-sendbar">
@@ -10207,7 +10209,7 @@ ${url}`;
                 </select>
               </div>
             </div>
-            <textarea id="textarea-${v.rowIndex}" style="color: ${noteColor};" placeholder="Add margin note..." onfocus="if (!ensureLoggedInFor('Sign in to add margin notes.')) this.blur();" oninput="autoSaveUserNote(${v.rowIndex}, '${v.reference}')">${noteObj.text}</textarea>
+            <textarea id="textarea-${v.rowIndex}" style="color: ${noteColor};" placeholder="Add margin note..." onfocus="if (!ensureLoggedInFor('Sign in to add margin notes.')) this.blur();" oninput="autoSaveUserNote(${v.rowIndex}, '${v.reference}')">${escapeHtml(noteObj.text)}</textarea>
           </div>
           <div class="margin-note-card church-resource-column-cell" id="church-resources-card-${v.rowIndex}">
             ${currentUser && currentUser.isAdmin ? `

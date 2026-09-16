@@ -43,7 +43,7 @@ import { getBibleStudyBookConfig, getSessionType } from './byTheBook.js';
 import { twBibleCourseData, markTWLessonComplete } from './twBibleCourse.js';
 import {
   currentUser, BIBLE_STUDIES_BOOK_ORDER, lastMainTabId,
-  ensureLoggedInFor, setHeaderIconSelected, switchTab
+  ensureLoggedInFor, setHeaderIconSelected, switchTab, escapeHtml
 } from '../app.js';
 
     // ============================================================
@@ -571,7 +571,7 @@ import {
           <div class="record-badge-icon-circle">
             <span class="record-badge-icon">${achieved ? renderRecordIconHtml(badge.icon) : RECORD_BADGE_LOCK_SVG}</span>
           </div>
-          <div class="record-badge-title">${badge.title}</div>
+          <div class="record-badge-title">${escapeHtml(badge.title)}</div>
         </div>`;
     }
 
@@ -614,14 +614,14 @@ import {
         case 'margin_notes_count':
           return typeof cfg.threshold === 'number' ? `Save ${cfg.threshold} margin note${cfg.threshold === 1 ? '' : 's'}.` : '';
         case 'reading_plan_completed':
-          return cfg.schedule_name ? `Complete the "${cfg.schedule_name}" reading plan.` : '';
+          return cfg.schedule_name ? `Complete the "${escapeHtml(cfg.schedule_name)}" reading plan.` : '';
         case 'book_resources_clicked':
-          return cfg.book ? `Explore every resource in the book of ${cfg.book} (Study tab → Books of the Bible).` : '';
+          return cfg.book ? `Explore every resource in the book of ${escapeHtml(cfg.book)} (Study tab → Books of the Bible).` : '';
         case 'book_group_resources_clicked':
-          return (cfg.books && cfg.books.length) ? `Explore every resource in each of: ${cfg.books.join(', ')}.` : '';
+          return (cfg.books && cfg.books.length) ? `Explore every resource in each of: ${cfg.books.map(escapeHtml).join(', ')}.` : '';
         case 'tw_module_completed': {
           const mod = cfg.module_key ? twBibleCourseData.find(m => m.id === cfg.module_key) : null;
-          return mod ? `Complete the "${mod.title}" module of the TW Bible Course.` : '';
+          return mod ? `Complete the "${escapeHtml(mod.title)}" module of the TW Bible Course.` : '';
         }
         case 'tw_course_completed':
           return 'Complete every module of the TW Bible Course.';
@@ -775,7 +775,7 @@ import {
       const rec = userRecordsMap[badge.id];
       const achieved = !!rec;
       const showTally = achieved && badge.tallied && rec.count > 1;
-      const safeTitle = (badge.title || '').replace(/"/g, '&quot;');
+      const safeTitle = escapeHtml(badge.title || '');
       const hue = getRecordBadgeHueColor(badge);
 
       let cornerHtml = '';
@@ -802,7 +802,7 @@ import {
           <div class="record-badge-icon-circle">
             <span class="record-badge-icon">${achieved ? renderRecordIconHtml(badge.icon) : RECORD_BADGE_LOCK_SVG}</span>
           </div>
-          <div class="record-badge-title">${badge.title}</div>
+          <div class="record-badge-title">${safeTitle}</div>
           ${progressHtml}
         </div>`;
     }
@@ -831,7 +831,7 @@ import {
         }).join('');
         return `
           <div class="record-section">
-            <div class="record-section-header">${(sectionName || '').replace(/</g, '&lt;')}</div>
+            <div class="record-section-header">${escapeHtml(sectionName || '')}</div>
             <div class="record-grid">${itemsHtml}</div>
             <div class="record-section-detail" id="record-section-detail-${sectionIndex}" style="display:none;"></div>
           </div>`;
@@ -878,9 +878,9 @@ import {
         <div class="book-admin-item-card" style="background:var(--card-bg);">
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
             <span style="font-size:28px; line-height:1;">${renderRecordIconHtml(badge.icon)}</span>
-            <div style="font-family: var(--font-heading); font-size:22px; color:var(--text-main);">${badge.title}</div>
+            <div style="font-family: var(--font-heading); font-size:22px; color:var(--text-main);">${escapeHtml(badge.title)}</div>
           </div>
-          <div style="font-size:14px; color:var(--text-main); margin-bottom:8px;">${badge.description || ''}</div>
+          <div style="font-size:14px; color:var(--text-main); margin-bottom:8px;">${escapeHtml(badge.description || '')}</div>
           ${statusLine}
         </div>`;
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -920,7 +920,7 @@ import {
     export function populateRecordAdminEditSelect() {
       const select = document.getElementById('record-admin-edit-select');
       select.innerHTML = '<option value="">— New Badge —</option>' +
-        recordBadgesList.map(b => `<option value="${b.id}">${(b.title || '').replace(/</g, '&lt;')}</option>`).join('');
+        recordBadgesList.map(b => `<option value="${b.id}">${escapeHtml(b.title || '')}</option>`).join('');
     }
 
     // Datalist of sections already in use, so admins reuse existing section names
@@ -996,7 +996,7 @@ import {
     export function populateRecordAdminTWModuleField() {
       const select = document.getElementById('record-admin-tw-module');
       if (!select) return;
-      select.innerHTML = twBibleCourseData.map(mod => `<option value="${mod.id}">${(mod.title || '').replace(/</g, '&lt;')}</option>`).join('');
+      select.innerHTML = twBibleCourseData.map(mod => `<option value="${mod.id}">${escapeHtml(mod.title || '')}</option>`).join('');
     }
 
     export function populateRecordAdminBookFields() {
