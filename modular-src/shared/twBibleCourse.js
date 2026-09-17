@@ -445,6 +445,11 @@ export function maybeShowTWCourseCompletionModal() {
       if (!mod || !panel) return;
 
       const lessons = mod.lessons || [];
+      // Matches shared/coreD.js's own safeTitle for the identical purpose
+      // (an onclick="shareXyz(..., '...')" JS string-literal argument) --
+      // needs both escapes: the JS string's own quote, and the surrounding
+      // HTML attribute's.
+      const safeTitle = (mod.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
       const heroVideo = getTWModuleHeroVideo(mod);
       const heroPreviewEmbedUrl = heroVideo
         ? toYouTubeMutedPreviewEmbedUrl(lessons[heroVideo.lessonIdx].video[heroVideo.videoIdx].url)
@@ -474,6 +479,9 @@ export function maybeShowTWCourseCompletionModal() {
             <button type="button" class="foundations-hero-round-btn" title="Back" onclick="closeTWModule()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
             </button>
+            <button type="button" class="foundations-hero-round-btn" title="Share this module" onclick="shareTWModule('${mod.id.replace(/'/g, "\\'")}', '${safeTitle}')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+            </button>
           </div>
           <div class="foundations-hero-content">
             <span class="foundations-hero-category">TW Bible Course</span>
@@ -501,6 +509,8 @@ export function maybeShowTWCourseCompletionModal() {
       const unlocked = isTWLessonUnlocked(mod, idx);
       const isComplete = !!twCourseProgress[lesson.id];
       const title = lesson.title || `Lesson ${idx + 1}`;
+      const safeModTitle = (mod.title || '').replace(/'/g, "\\'");
+      const safeLessonTitle = title.replace(/'/g, "\\'");
 
       const hasVideoContent = (lesson.video || []).some(v => v.url);
       const hasAudioContent = (lesson.audio || []).some(a => a.url);
@@ -595,6 +605,9 @@ export function maybeShowTWCourseCompletionModal() {
                 ${statusIconHtml}
               </span>
               ${unlocked ? `<svg class="foundations-session-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>` : ''}
+            </button>
+            <button type="button" class="share-btn" title="Share this lesson" style="flex-shrink:0;" onclick="shareTWLesson('${mod.id.replace(/'/g, "\\'")}', ${idx}, '${safeModTitle}', '${safeLessonTitle}')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
             </button>
           </div>
           ${bodyHtml}

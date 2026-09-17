@@ -546,7 +546,7 @@ export {
     function captureShareTargetFromURL() {
       const params = new URLSearchParams(window.location.search);
       const share = params.get('share');
-      if (share === 'verse' || share === 'resource' || share === 'book_session' || share === 'foundations_class' || share === 'foundations_session') {
+      if (share === 'verse' || share === 'resource' || share === 'book_session' || share === 'foundations_class' || share === 'foundations_session' || share === 'tw_module' || share === 'tw_lesson') {
         pendingShareTarget = {
           type: share,
           ref: params.get('ref') || null,
@@ -578,7 +578,9 @@ export {
       resource: 'study resource',
       book_session: 'study session',
       foundations_class: 'Core-D class',
-      foundations_session: 'Core-D session'
+      foundations_session: 'Core-D session',
+      tw_module: 'TW Bible Course module',
+      tw_lesson: 'TW Bible Course lesson'
     };
 
     // Shown on the login screen when someone arrives via a share link (text,
@@ -687,6 +689,52 @@ export {
         };
         if (!ensureLoggedInFor('Sign in to view Core-D.', openSharedFoundationsItem)) return;
         openSharedFoundationsItem();
+        return;
+      }
+
+      if (target.type === 'tw_module' || target.type === 'tw_lesson') {
+        const mod = twBibleCourseData.find(m => m.id === target.id);
+        if (!mod) return;
+
+        // TW Bible Course is sign-in only (same as Core-D/By the Book) — a shared
+        // link from a guest pops the login modal and picks this exact module/
+        // lesson back up automatically once they do.
+        const openSharedTWItem = () => {
+          switchTab('study');
+          switchStudySubTab('course');
+          openTWModule(target.id);
+
+          if (target.type === 'tw_lesson') {
+            const lessonIdx = parseInt(target.i, 10);
+            if (!isNaN(lessonIdx) && (mod.lessons || [])[lessonIdx]) {
+              // renderTWModuleDetailPanel() (openTWModule's own render) just
+              // repainted the panel with everything collapsed — wait a beat
+              // for that to land, then expand the shared lesson and scroll/
+              // highlight it, same as any other share-link landing in this app.
+              setTimeout(() => {
+                toggleTWLesson(lessonIdx);
+                setTimeout(() => {
+                  const el = document.querySelectorAll('#tw-course-detail-panel .foundations-session-item')[lessonIdx];
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.classList.add('share-highlight');
+                    setTimeout(() => el.classList.remove('share-highlight'), 2000);
+                  }
+                }, 150);
+              }, 300);
+            }
+          } else {
+            setTimeout(() => {
+              const panel = document.getElementById('tw-course-detail-panel');
+              if (panel) {
+                panel.classList.add('share-highlight');
+                setTimeout(() => panel.classList.remove('share-highlight'), 2000);
+              }
+            }, 300);
+          }
+        };
+        if (!ensureLoggedInFor('Sign in to view TW Bible Course.', openSharedTWItem)) return;
+        openSharedTWItem();
         return;
       }
 
@@ -872,6 +920,19 @@ export {
       // keeps a shared first session from silently losing its index.
       const url = buildShareUrl('foundations_session', { id: String(dbId), i: String(sessionIndex) });
       openShareSheet(url, `Check out "${sessionTitle}" from ${classTitle}`);
+    }
+
+    function shareTWModule(moduleId, title) {
+      const url = buildShareUrl('tw_module', { id: moduleId });
+      openShareSheet(url, `Check out "${title}" in TW Bible Course`);
+    }
+
+    function shareTWLesson(moduleId, lessonIndex, moduleTitle, lessonTitle) {
+      // Same falsy-0 caveat as shareBookSession/shareFoundationsSession —
+      // String(lessonIndex) keeps a shared first lesson from silently
+      // losing its index.
+      const url = buildShareUrl('tw_lesson', { id: moduleId, i: String(lessonIndex) });
+      openShareSheet(url, `Check out "${lessonTitle}" from ${moduleTitle}`);
     }
 
     async function checkUserSession() {
@@ -2347,15 +2408,18 @@ export {
     }
 
     function switchStudySubTab(subTab) {
-      // "By the Book" and "Core-D" are account-bound study areas — pop the login
-      // modal instead of switching into them, and land back here automatically
-      // once the person signs in. By the Book specifically needs a signed-in
-      // user id to track progress for Records badging, so it can't be opened
+      // "By the Book", "Core-D", and "TW Bible Course" are account-bound study
+      // areas — pop the login modal instead of switching into them, and land
+      // back here automatically once the person signs in. By the Book and TW
+      // Bible Course specifically need a signed-in user id to track progress
+      // for Records badging and lesson completion, so neither can be opened
       // as a guest. Returns false when blocked so callers (e.g. a shared-link
       // deep link) know not to keep going as if the switch happened.
-      if ((subTab === 'bible-studies' || subTab === 'foundations') &&
+      if ((subTab === 'bible-studies' || subTab === 'foundations' || subTab === 'course') &&
           !ensureLoggedInFor(
-            subTab === 'bible-studies' ? 'Sign in to view By the Book.' : 'Sign in to view Core-D.',
+            subTab === 'bible-studies' ? 'Sign in to view By the Book.' :
+            subTab === 'foundations' ? 'Sign in to view Core-D.' :
+            'Sign in to view TW Bible Course.',
             () => switchStudySubTab(subTab)
           )) {
         return false;
@@ -3777,6 +3841,8 @@ export {
   shareResource,
   shareSheetCopyLink,
   shareSheetDeviceShare,
+  shareTWLesson,
+  shareTWModule,
   shareVerse,
   showResetPasswordRequest,
   showSignIn,
@@ -3851,6 +3917,7 @@ function __setCurrentPlanStartDateForTest(date) { currentPlanStartDate = date; }
 // correctly called at all afterward) without needing to fully reproduce
 // the whole app's real DOM.
 function __setAppHasInitializedForTest(val) { appHasInitialized = val; }
+function __setPendingShareTargetForTest(target) { pendingShareTarget = target; }
 // A getter, not window.currentPlanViewDayNumber, for the same reason
 // shared/cords.js's __getCordPollTimerForTest and shared/records.js's
 // __getUserRecordsMapForTest exist: currentPlanViewDayNumber is a

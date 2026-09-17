@@ -2340,6 +2340,8 @@ var __App = (() => {
     shareSheetContext: () => shareSheetContext,
     shareSheetCopyLink: () => shareSheetCopyLink,
     shareSheetDeviceShare: () => shareSheetDeviceShare,
+    shareTWLesson: () => shareTWLesson,
+    shareTWModule: () => shareTWModule,
     shareVerse: () => shareVerse,
     showResetPasswordRequest: () => showResetPasswordRequest,
     showSignIn: () => showSignIn,
@@ -6174,6 +6176,7 @@ ${titlesToImport.join(", ")}`)) return;
     const panel = document.getElementById("tw-course-detail-panel");
     if (!mod || !panel) return;
     const lessons = mod.lessons || [];
+    const safeTitle = (mod.title || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
     const heroVideo = getTWModuleHeroVideo(mod);
     const heroPreviewEmbedUrl = heroVideo ? toYouTubeMutedPreviewEmbedUrl(lessons[heroVideo.lessonIdx].video[heroVideo.videoIdx].url) : null;
     const heroPresenterHtml = mod.presenter ? `
@@ -6194,6 +6197,9 @@ ${titlesToImport.join(", ")}`)) return;
           <div class="foundations-hero-topbar">
             <button type="button" class="foundations-hero-round-btn" title="Back" onclick="closeTWModule()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <button type="button" class="foundations-hero-round-btn" title="Share this module" onclick="shareTWModule('${mod.id.replace(/'/g, "\\'")}', '${safeTitle}')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
             </button>
           </div>
           <div class="foundations-hero-content">
@@ -6220,6 +6226,8 @@ ${titlesToImport.join(", ")}`)) return;
     const unlocked = isTWLessonUnlocked(mod, idx);
     const isComplete = !!twCourseProgress[lesson.id];
     const title = lesson.title || `Lesson ${idx + 1}`;
+    const safeModTitle = (mod.title || "").replace(/'/g, "\\'");
+    const safeLessonTitle = title.replace(/'/g, "\\'");
     const hasVideoContent = (lesson.video || []).some((v) => v.url);
     const hasAudioContent = (lesson.audio || []).some((a) => a.url);
     const hasResourceContent = (lesson.resources || []).some((r) => r.url);
@@ -6290,6 +6298,9 @@ ${titlesToImport.join(", ")}`)) return;
                 ${statusIconHtml}
               </span>
               ${unlocked ? `<svg class="foundations-session-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>` : ""}
+            </button>
+            <button type="button" class="share-btn" title="Share this lesson" style="flex-shrink:0;" onclick="shareTWLesson('${mod.id.replace(/'/g, "\\'")}', ${idx}, '${safeModTitle}', '${safeLessonTitle}')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
             </button>
           </div>
           ${bodyHtml}
@@ -9280,7 +9291,7 @@ ${url}`;
   function captureShareTargetFromURL() {
     const params = new URLSearchParams(window.location.search);
     const share = params.get("share");
-    if (share === "verse" || share === "resource" || share === "book_session" || share === "foundations_class" || share === "foundations_session") {
+    if (share === "verse" || share === "resource" || share === "book_session" || share === "foundations_class" || share === "foundations_session" || share === "tw_module" || share === "tw_lesson") {
       pendingShareTarget = {
         type: share,
         ref: params.get("ref") || null,
@@ -9317,7 +9328,9 @@ ${url}`;
     resource: "study resource",
     book_session: "study session",
     foundations_class: "Core-D class",
-    foundations_session: "Core-D session"
+    foundations_session: "Core-D session",
+    tw_module: "TW Bible Course module",
+    tw_lesson: "TW Bible Course lesson"
   };
   function updateShareSignupBanner() {
     const banner = document.getElementById("share-signup-banner");
@@ -9405,6 +9418,42 @@ ${url}`;
       };
       if (!ensureLoggedInFor("Sign in to view Core-D.", openSharedFoundationsItem)) return;
       openSharedFoundationsItem();
+      return;
+    }
+    if (target.type === "tw_module" || target.type === "tw_lesson") {
+      const mod = twBibleCourseData.find((m) => m.id === target.id);
+      if (!mod) return;
+      const openSharedTWItem = () => {
+        switchTab("study");
+        switchStudySubTab("course");
+        openTWModule(target.id);
+        if (target.type === "tw_lesson") {
+          const lessonIdx = parseInt(target.i, 10);
+          if (!isNaN(lessonIdx) && (mod.lessons || [])[lessonIdx]) {
+            setTimeout(() => {
+              toggleTWLesson(lessonIdx);
+              setTimeout(() => {
+                const el = document.querySelectorAll("#tw-course-detail-panel .foundations-session-item")[lessonIdx];
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  el.classList.add("share-highlight");
+                  setTimeout(() => el.classList.remove("share-highlight"), 2e3);
+                }
+              }, 150);
+            }, 300);
+          }
+        } else {
+          setTimeout(() => {
+            const panel = document.getElementById("tw-course-detail-panel");
+            if (panel) {
+              panel.classList.add("share-highlight");
+              setTimeout(() => panel.classList.remove("share-highlight"), 2e3);
+            }
+          }, 300);
+        }
+      };
+      if (!ensureLoggedInFor("Sign in to view TW Bible Course.", openSharedTWItem)) return;
+      openSharedTWItem();
       return;
     }
     if (target.t) {
@@ -9542,6 +9591,14 @@ ${url}`;
   function shareFoundationsSession(dbId, sessionIndex, classTitle, sessionTitle) {
     const url = buildShareUrl("foundations_session", { id: String(dbId), i: String(sessionIndex) });
     openShareSheet(url, `Check out "${sessionTitle}" from ${classTitle}`);
+  }
+  function shareTWModule(moduleId, title) {
+    const url = buildShareUrl("tw_module", { id: moduleId });
+    openShareSheet(url, `Check out "${title}" in TW Bible Course`);
+  }
+  function shareTWLesson(moduleId, lessonIndex, moduleTitle, lessonTitle) {
+    const url = buildShareUrl("tw_lesson", { id: moduleId, i: String(lessonIndex) });
+    openShareSheet(url, `Check out "${lessonTitle}" from ${moduleTitle}`);
   }
   async function checkUserSession() {
     showLoader(true);
@@ -10576,8 +10633,8 @@ ${url}`;
     });
   }
   function switchStudySubTab(subTab) {
-    if ((subTab === "bible-studies" || subTab === "foundations") && !ensureLoggedInFor(
-      subTab === "bible-studies" ? "Sign in to view By the Book." : "Sign in to view Core-D.",
+    if ((subTab === "bible-studies" || subTab === "foundations" || subTab === "course") && !ensureLoggedInFor(
+      subTab === "bible-studies" ? "Sign in to view By the Book." : subTab === "foundations" ? "Sign in to view Core-D." : "Sign in to view TW Bible Course.",
       () => switchStudySubTab(subTab)
     )) {
       return false;
