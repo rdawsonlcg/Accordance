@@ -16,9 +16,9 @@ jobs:
       run:
         working-directory: modular-src
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
@@ -30,6 +30,9 @@ jobs:
 
       - name: Verify (every onclick-referenced function is actually reachable)
         run: npm run verify
+
+      - name: Check for unescaped HTML interpolation (title/name/notes/etc. fields inserted into HTML without an escape call)
+        run: npm run checkUnescaped
 
       - name: Test (the regression suite in tests/)
         run: npm test

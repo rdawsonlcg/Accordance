@@ -6,8 +6,9 @@
   "scripts": {
     "build": "node build.js",
     "verify": "node verify.js",
+    "checkUnescaped": "node scripts/checkUnescapedHtmlInterpolation.js",
     "test": "node --test --test-force-exit",
-    "check": "npm run build && npm run verify && npm test"
+    "check": "npm run build && npm run verify && npm run checkUnescaped && npm test"
   },
   "dependencies": {
     "esbuild": "^0.28.2"

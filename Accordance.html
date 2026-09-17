@@ -1170,7 +1170,14 @@
     };
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true, storage: rememberAwareAuthStorage }
+      // flowType: 'pkce' isn't exercised by anything this app currently
+      // does (email+password sign-in/sign-up only, no OAuth or magic-link
+      // redirect flow, and no password-reset flow exists yet either -- see
+      // the security-audit follow-up notes) -- Supabase's own recommended
+      // default regardless, and specifically what protects a redirect-based
+      // flow (password reset, magic link, OAuth) from a stolen auth code if
+      // any of those are ever added later. Costs nothing to set now.
+      auth: { persistSession: true, autoRefreshToken: true, storage: rememberAwareAuthStorage, flowType: 'pkce' }
     });
   </script>
 </head>
@@ -1194,14 +1201,28 @@
         <p id="auth-subtitle" style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Enter your credentials to access your notes.</p>
         <input type="email" id="auth-email" class="input-field" placeholder="Email address">
         <input type="password" id="auth-password" class="input-field" placeholder="Password">
-        <label style="display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--text-main); margin:-6px 0 16px 2px; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">
+        <p id="forgot-password-link-row" style="margin:-10px 0 16px; text-align:right;">
+          <a href="#" onclick="showResetPasswordRequest(); return false;" style="color:var(--text-muted); text-decoration:underline; font-size:12.5px;">Forgot password?</a>
+        </p>
+        <label id="remember-device-row" style="display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--text-main); margin:-6px 0 16px 2px; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">
           <input type="checkbox" id="remember-device-checkbox" checked style="width:16px; height:16px; margin:0; flex-shrink:0;">
           Remember this device
         </label>
+        <!-- The reset-request mode (below) only uses the email field above.
+             This field is for a DIFFERENT mode -- setting the actual new
+             password once a recovery link is clicked. Both this field and
+             the two rows above are hidden entirely outside their one
+             relevant mode (see setAuthScreenMode), never just visually
+             de-emphasized, so a screen reader never announces a field that
+             isn't actually in play for the current mode. -->
+        <input type="password" id="auth-new-password" class="input-field" placeholder="New password" style="display:none;">
         <button class="btn" id="auth-btn" onclick="handleAuth()">Sign In</button>
         <p style="margin-top: 15px; font-size: 14px; color: var(--text-muted);">
           <span id="auth-toggle-text">Don't have an account?</span>
           <a href="#" onclick="toggleAuthMode()" style="color: var(--primary-color); text-decoration: underline;" id="auth-toggle-link">Sign Up</a>
+        </p>
+        <p id="back-to-signin-row" style="display:none; margin-top:15px; font-size:14px; color:var(--text-muted); text-align:center;">
+          <a href="#" onclick="showSignIn(); return false;" style="color:var(--primary-color); text-decoration:underline;">Back to Sign In</a>
         </p>
         <p id="login-error" style="color: var(--accent-coral); display: none; margin-top: 10px; font-size: 13px;"></p>
       </div>
@@ -2320,6 +2341,8 @@ var __App = (() => {
     shareSheetCopyLink: () => shareSheetCopyLink,
     shareSheetDeviceShare: () => shareSheetDeviceShare,
     shareVerse: () => shareVerse,
+    showResetPasswordRequest: () => showResetPasswordRequest,
+    showSignIn: () => showSignIn,
     skipAudio: () => skipAudio,
     skipDailyReadingTts: () => skipDailyReadingTts,
     startEditChurchResource: () => startEditChurchResource,
@@ -5643,7 +5666,7 @@ ${titlesToImport.join(", ")}`)) return;
           const setCards = item.badges.map(renderRecordBadgeCard).join("");
           return `
               <div class="record-badge-set">
-                ${item.label ? `<div class="record-badge-set-label">${item.label}</div>` : ""}
+                ${item.label ? `<div class="record-badge-set-label">${escapeHtml(item.label)}</div>` : ""}
                 <div class="record-badge-set-row">${setCards}</div>
               </div>`;
         }
@@ -8562,7 +8585,7 @@ ${titlesToImport.join(", ")}`)) return;
   }
   function cordAvatarInitial(name) {
     const trimmed = (name || "").trim();
-    return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
+    return trimmed ? escapeHtml(trimmed.charAt(0).toUpperCase()) : "?";
   }
   var CORD_GROUP_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:55%; height:55%;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>';
   function cordAvatarHtml(name, seed, isGroup, size) {
@@ -8992,7 +9015,7 @@ ${url}`;
     const raw = Array.isArray(value) ? value : value ? [value] : [];
     return raw.map((q) => normalizeFoundationsQuiz(q)).filter(Boolean);
   }
-  var isSignUpMode = false;
+  var authScreenMode = "signin";
   var currentUser = null;
   var appHasInitialized = false;
   var currentBibleVerses2 = [];
@@ -9179,13 +9202,80 @@ ${url}`;
   function showLoader(show) {
     document.getElementById("loader").style.display = show ? "block" : "none";
   }
+  function setAuthScreenMode(mode) {
+    authScreenMode = mode;
+    const els = {
+      title: document.getElementById("auth-title"),
+      subtitle: document.getElementById("auth-subtitle"),
+      btn: document.getElementById("auth-btn"),
+      password: document.getElementById("auth-password"),
+      newPassword: document.getElementById("auth-new-password"),
+      forgotRow: document.getElementById("forgot-password-link-row"),
+      rememberRow: document.getElementById("remember-device-row"),
+      toggleText: document.getElementById("auth-toggle-text"),
+      toggleLink: document.getElementById("auth-toggle-link"),
+      backRow: document.getElementById("back-to-signin-row"),
+      error: document.getElementById("login-error")
+    };
+    els.error.style.display = "none";
+    if (mode === "signup") {
+      els.title.innerText = "Create Account";
+      els.subtitle.innerText = "Enter your credentials to access your notes.";
+      els.btn.innerText = "Sign Up";
+      els.password.style.display = "";
+      els.newPassword.style.display = "none";
+      els.forgotRow.style.display = "none";
+      els.rememberRow.style.display = "";
+      els.toggleText.innerText = "Already have an account?";
+      els.toggleLink.innerText = "Sign In";
+      els.toggleLink.parentElement.style.display = "";
+      els.backRow.style.display = "none";
+    } else if (mode === "reset-request") {
+      els.title.innerText = "Reset Password";
+      els.subtitle.innerText = "Enter your email and we'll send you a link to reset your password.";
+      els.btn.innerText = "Send Reset Link";
+      els.password.style.display = "none";
+      els.newPassword.style.display = "none";
+      els.forgotRow.style.display = "none";
+      els.rememberRow.style.display = "none";
+      els.toggleLink.parentElement.style.display = "none";
+      els.backRow.style.display = "";
+    } else if (mode === "reset-confirm") {
+      els.title.innerText = "Set a New Password";
+      els.subtitle.innerText = "You're signed in via your reset link -- choose a new password below.";
+      els.btn.innerText = "Set New Password";
+      els.password.style.display = "none";
+      els.newPassword.style.display = "";
+      els.forgotRow.style.display = "none";
+      els.rememberRow.style.display = "none";
+      els.toggleLink.parentElement.style.display = "none";
+      els.backRow.style.display = "none";
+    } else {
+      els.title.innerText = "Sign In";
+      els.subtitle.innerText = "Enter your credentials to access your notes.";
+      els.btn.innerText = "Sign In";
+      els.password.style.display = "";
+      els.newPassword.style.display = "none";
+      els.forgotRow.style.display = "";
+      els.rememberRow.style.display = "";
+      els.toggleText.innerText = "Don't have an account?";
+      els.toggleLink.innerText = "Sign Up";
+      els.toggleLink.parentElement.style.display = "";
+      els.backRow.style.display = "none";
+    }
+  }
   function toggleAuthMode() {
-    isSignUpMode = !isSignUpMode;
-    document.getElementById("auth-title").innerText = isSignUpMode ? "Create Account" : "Sign In";
-    document.getElementById("auth-btn").innerText = isSignUpMode ? "Sign Up" : "Sign In";
-    document.getElementById("auth-toggle-text").innerText = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-    document.getElementById("auth-toggle-link").innerText = isSignUpMode ? "Sign In" : "Sign Up";
-    document.getElementById("login-error").style.display = "none";
+    setAuthScreenMode(authScreenMode === "signup" ? "signin" : "signup");
+  }
+  function showResetPasswordRequest() {
+    setAuthScreenMode("reset-request");
+  }
+  function showSignIn() {
+    setAuthScreenMode("signin");
+  }
+  function showSetNewPasswordForm() {
+    document.getElementById("login-screen").style.display = "flex";
+    setAuthScreenMode("reset-confirm");
   }
   function captureShareTargetFromURL() {
     const params = new URLSearchParams(window.location.search);
@@ -9512,10 +9602,46 @@ ${url}`;
   async function handleAuth() {
     const email = document.getElementById("auth-email").value.trim();
     const password = document.getElementById("auth-password").value.trim();
+    const newPassword = document.getElementById("auth-new-password").value.trim();
     const errorEl = document.getElementById("login-error");
     const rememberCheckbox = document.getElementById("remember-device-checkbox");
     errorEl.style.display = "none";
     errorEl.style.color = "var(--accent-coral)";
+    if (authScreenMode === "reset-request") {
+      if (!email) {
+        errorEl.innerText = "Please enter your email address.";
+        errorEl.style.display = "block";
+        return;
+      }
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: originalShareUrl || window.location.href
+      });
+      if (error) {
+        errorEl.innerText = error.message;
+        errorEl.style.display = "block";
+      } else {
+        errorEl.style.color = "var(--accent-teal)";
+        errorEl.innerText = "Check your email for a link to reset your password.";
+        errorEl.style.display = "block";
+      }
+      return;
+    }
+    if (authScreenMode === "reset-confirm") {
+      if (!newPassword) {
+        errorEl.innerText = "Please enter a new password.";
+        errorEl.style.display = "block";
+        return;
+      }
+      const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+      if (error) {
+        errorEl.innerText = error.message;
+        errorEl.style.display = "block";
+      } else {
+        document.getElementById("auth-new-password").value = "";
+        checkUserSession();
+      }
+      return;
+    }
     if (!email || !password) {
       errorEl.innerText = "Please enter both email and password.";
       errorEl.style.display = "block";
@@ -9523,7 +9649,7 @@ ${url}`;
     }
     setRememberDevicePreference(!!(rememberCheckbox && rememberCheckbox.checked));
     let response;
-    if (isSignUpMode) {
+    if (authScreenMode === "signup") {
       response = await supabaseClient.auth.signUp({
         email,
         password,
@@ -9611,6 +9737,7 @@ ${url}`;
   function closeLoginModal() {
     hideLoginModal();
     pendingAuthAction = null;
+    setAuthScreenMode("signin");
   }
   function resolvePendingAuthAction() {
     if (typeof pendingAuthAction === "function") {
@@ -10880,6 +11007,9 @@ ${url}`;
   function printMyMargins() {
     window.print();
   }
+  supabaseClient.auth.onAuthStateChange((event) => {
+    if (event === "PASSWORD_RECOVERY") showSetNewPasswordForm();
+  });
   document.addEventListener("DOMContentLoaded", () => {
     applyDarkModePreference();
     captureShareTargetFromURL();

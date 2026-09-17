@@ -823,7 +823,7 @@ import {
             const setCards = item.badges.map(renderRecordBadgeCard).join('');
             return `
               <div class="record-badge-set">
-                ${item.label ? `<div class="record-badge-set-label">${item.label}</div>` : ''}
+                ${item.label ? `<div class="record-badge-set-label">${escapeHtml(item.label)}</div>` : ''}
                 <div class="record-badge-set-row">${setCards}</div>
               </div>`;
           }

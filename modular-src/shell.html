@@ -1170,7 +1170,14 @@
     };
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true, storage: rememberAwareAuthStorage }
+      // flowType: 'pkce' isn't exercised by anything this app currently
+      // does (email+password sign-in/sign-up only, no OAuth or magic-link
+      // redirect flow, and no password-reset flow exists yet either -- see
+      // the security-audit follow-up notes) -- Supabase's own recommended
+      // default regardless, and specifically what protects a redirect-based
+      // flow (password reset, magic link, OAuth) from a stolen auth code if
+      // any of those are ever added later. Costs nothing to set now.
+      auth: { persistSession: true, autoRefreshToken: true, storage: rememberAwareAuthStorage, flowType: 'pkce' }
     });
   </script>
 </head>
@@ -1194,14 +1201,28 @@
         <p id="auth-subtitle" style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Enter your credentials to access your notes.</p>
         <input type="email" id="auth-email" class="input-field" placeholder="Email address">
         <input type="password" id="auth-password" class="input-field" placeholder="Password">
-        <label style="display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--text-main); margin:-6px 0 16px 2px; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">
+        <p id="forgot-password-link-row" style="margin:-10px 0 16px; text-align:right;">
+          <a href="#" onclick="showResetPasswordRequest(); return false;" style="color:var(--text-muted); text-decoration:underline; font-size:12.5px;">Forgot password?</a>
+        </p>
+        <label id="remember-device-row" style="display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--text-main); margin:-6px 0 16px 2px; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">
           <input type="checkbox" id="remember-device-checkbox" checked style="width:16px; height:16px; margin:0; flex-shrink:0;">
           Remember this device
         </label>
+        <!-- The reset-request mode (below) only uses the email field above.
+             This field is for a DIFFERENT mode -- setting the actual new
+             password once a recovery link is clicked. Both this field and
+             the two rows above are hidden entirely outside their one
+             relevant mode (see setAuthScreenMode), never just visually
+             de-emphasized, so a screen reader never announces a field that
+             isn't actually in play for the current mode. -->
+        <input type="password" id="auth-new-password" class="input-field" placeholder="New password" style="display:none;">
         <button class="btn" id="auth-btn" onclick="handleAuth()">Sign In</button>
         <p style="margin-top: 15px; font-size: 14px; color: var(--text-muted);">
           <span id="auth-toggle-text">Don't have an account?</span>
           <a href="#" onclick="toggleAuthMode()" style="color: var(--primary-color); text-decoration: underline;" id="auth-toggle-link">Sign Up</a>
+        </p>
+        <p id="back-to-signin-row" style="display:none; margin-top:15px; font-size:14px; color:var(--text-muted); text-align:center;">
+          <a href="#" onclick="showSignIn(); return false;" style="color:var(--primary-color); text-decoration:underline;">Back to Sign In</a>
         </p>
         <p id="login-error" style="color: var(--accent-coral); display: none; margin-top: 10px; font-size: 13px;"></p>
       </div>

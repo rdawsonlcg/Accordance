@@ -258,7 +258,12 @@ export {
 };
 
 
-    let isSignUpMode = false;
+    // 'signin' | 'signup' | 'reset-request' (asking for a reset email) |
+    // 'reset-confirm' (setting a new password, arrived at via a clicked
+    // recovery link's PASSWORD_RECOVERY event, never chosen directly).
+    // setAuthScreenMode is the only place this actually changes; every
+    // other function below just calls that with the mode it wants.
+    let authScreenMode = 'signin';
     let currentUser = null;
     // True once initializeApp() has run to completion at least once this page load
     // (as a guest or signed in — whichever happens first). Signing in mid-session
@@ -441,14 +446,95 @@ export {
       document.getElementById('loader').style.display = show ? 'block' : 'none';
     }
 
+    // Single source of truth for the login modal's current mode -- every
+    // element that varies by mode (title, subtitle, which fields show,
+    // which links show, the submit button's own label) gets set here, in
+    // one place, rather than scattered across four separate toggle
+    // functions each only handling their own transition.
+    function setAuthScreenMode(mode) {
+      authScreenMode = mode;
+      const els = {
+        title: document.getElementById('auth-title'),
+        subtitle: document.getElementById('auth-subtitle'),
+        btn: document.getElementById('auth-btn'),
+        password: document.getElementById('auth-password'),
+        newPassword: document.getElementById('auth-new-password'),
+        forgotRow: document.getElementById('forgot-password-link-row'),
+        rememberRow: document.getElementById('remember-device-row'),
+        toggleText: document.getElementById('auth-toggle-text'),
+        toggleLink: document.getElementById('auth-toggle-link'),
+        backRow: document.getElementById('back-to-signin-row'),
+        error: document.getElementById('login-error'),
+      };
+      els.error.style.display = 'none';
+
+      if (mode === 'signup') {
+        els.title.innerText = 'Create Account';
+        els.subtitle.innerText = 'Enter your credentials to access your notes.';
+        els.btn.innerText = 'Sign Up';
+        els.password.style.display = '';
+        els.newPassword.style.display = 'none';
+        els.forgotRow.style.display = 'none';
+        els.rememberRow.style.display = '';
+        els.toggleText.innerText = 'Already have an account?';
+        els.toggleLink.innerText = 'Sign In';
+        els.toggleLink.parentElement.style.display = '';
+        els.backRow.style.display = 'none';
+      } else if (mode === 'reset-request') {
+        els.title.innerText = 'Reset Password';
+        els.subtitle.innerText = "Enter your email and we'll send you a link to reset your password.";
+        els.btn.innerText = 'Send Reset Link';
+        els.password.style.display = 'none';
+        els.newPassword.style.display = 'none';
+        els.forgotRow.style.display = 'none';
+        els.rememberRow.style.display = 'none';
+        els.toggleLink.parentElement.style.display = 'none';
+        els.backRow.style.display = '';
+      } else if (mode === 'reset-confirm') {
+        els.title.innerText = 'Set a New Password';
+        els.subtitle.innerText = "You're signed in via your reset link -- choose a new password below.";
+        els.btn.innerText = 'Set New Password';
+        els.password.style.display = 'none';
+        els.newPassword.style.display = '';
+        els.forgotRow.style.display = 'none';
+        els.rememberRow.style.display = 'none';
+        els.toggleLink.parentElement.style.display = 'none';
+        els.backRow.style.display = 'none'; // no sign-in to go back to -- a session already exists
+      } else { // 'signin'
+        els.title.innerText = 'Sign In';
+        els.subtitle.innerText = 'Enter your credentials to access your notes.';
+        els.btn.innerText = 'Sign In';
+        els.password.style.display = '';
+        els.newPassword.style.display = 'none';
+        els.forgotRow.style.display = '';
+        els.rememberRow.style.display = '';
+        els.toggleText.innerText = "Don't have an account?";
+        els.toggleLink.innerText = 'Sign Up';
+        els.toggleLink.parentElement.style.display = '';
+        els.backRow.style.display = 'none';
+      }
+    }
+
     // Toggle between Sign In and Sign Up view
     function toggleAuthMode() {
-      isSignUpMode = !isSignUpMode;
-      document.getElementById('auth-title').innerText = isSignUpMode ? 'Create Account' : 'Sign In';
-      document.getElementById('auth-btn').innerText = isSignUpMode ? 'Sign Up' : 'Sign In';
-      document.getElementById('auth-toggle-text').innerText = isSignUpMode ? 'Already have an account?' : 'Don\'t have an account?';
-      document.getElementById('auth-toggle-link').innerText = isSignUpMode ? 'Sign In' : 'Sign Up';
-      document.getElementById('login-error').style.display = 'none';
+      setAuthScreenMode(authScreenMode === 'signup' ? 'signin' : 'signup');
+    }
+
+    function showResetPasswordRequest() {
+      setAuthScreenMode('reset-request');
+    }
+
+    function showSignIn() {
+      setAuthScreenMode('signin');
+    }
+
+    // Called only from the PASSWORD_RECOVERY auth-state-change handler below
+    // (see the supabaseClient.auth.onAuthStateChange listener) -- never
+    // chosen directly by the person, since it only makes sense right after
+    // they've clicked a real recovery link.
+    function showSetNewPasswordForm() {
+      document.getElementById('login-screen').style.display = 'flex';
+      setAuthScreenMode('reset-confirm');
     }
 
     // --- AUTHENTICATION & SESSION MANAGEMENT ---
@@ -906,12 +992,58 @@ export {
     async function handleAuth() {
       const email = document.getElementById('auth-email').value.trim();
       const password = document.getElementById('auth-password').value.trim();
+      const newPassword = document.getElementById('auth-new-password').value.trim();
       const errorEl = document.getElementById('login-error');
       const rememberCheckbox = document.getElementById('remember-device-checkbox');
 
       // Reset message styling
       errorEl.style.display = 'none';
       errorEl.style.color = 'var(--accent-coral)';
+
+      if (authScreenMode === 'reset-request') {
+        if (!email) {
+          errorEl.innerText = 'Please enter your email address.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        // redirectTo matches the existing pattern for the signup-confirmation
+        // email just below (emailRedirectTo: ... window.location.href) --
+        // same file:// caveat applies (a reset link only opens back into a
+        // hosted copy of the app reliably; a local file:// copy can't be
+        // relied on to still exist at the same path on whatever device the
+        // person opens their email on). flowType: 'pkce' on this client
+        // (see shell.html's createClient call) is what makes this reset
+        // link safe against a stolen/leaked auth code.
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+          redirectTo: originalShareUrl || window.location.href,
+        });
+        if (error) {
+          errorEl.innerText = error.message;
+          errorEl.style.display = 'block';
+        } else {
+          errorEl.style.color = 'var(--accent-teal)';
+          errorEl.innerText = "Check your email for a link to reset your password.";
+          errorEl.style.display = 'block';
+        }
+        return;
+      }
+
+      if (authScreenMode === 'reset-confirm') {
+        if (!newPassword) {
+          errorEl.innerText = 'Please enter a new password.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+        if (error) {
+          errorEl.innerText = error.message;
+          errorEl.style.display = 'block';
+        } else {
+          document.getElementById('auth-new-password').value = '';
+          checkUserSession(); // the recovery link already established a real session
+        }
+        return;
+      }
 
       if (!email || !password) {
         errorEl.innerText = 'Please enter both email and password.';
@@ -925,7 +1057,7 @@ export {
       setRememberDevicePreference(!!(rememberCheckbox && rememberCheckbox.checked));
 
       let response;
-      if (isSignUpMode) {
+      if (authScreenMode === 'signup') {
         response = await supabaseClient.auth.signUp({
           email, password,
           options: { emailRedirectTo: originalShareUrl || window.location.href }
@@ -1070,6 +1202,11 @@ export {
     function closeLoginModal() {
       hideLoginModal();
       pendingAuthAction = null;
+      // Always back to the default Sign In view for next time, so dismissing
+      // the modal mid-reset-flow (or just closing it normally) never leaves
+      // a later, unrelated open of this same modal stuck showing "Reset
+      // Password" or "Set a New Password" instead of Sign In.
+      setAuthScreenMode('signin');
     }
 
     function resolvePendingAuthAction() {
@@ -2804,6 +2941,17 @@ export {
     }
 
     
+    // Fires when someone arrives via a clicked password-reset link (the
+    // recovery link itself establishes a real, temporary session before
+    // this ever fires -- see resetPasswordForEmail's redirectTo in
+    // handleAuth). Registered once, at module load, rather than only
+    // inside DOMContentLoaded, since Supabase can fire this as soon as it
+    // finishes parsing the recovery code out of the URL, which isn't
+    // guaranteed to wait for DOMContentLoaded itself.
+    supabaseClient.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') showSetNewPasswordForm();
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
       applyDarkModePreference();
       captureShareTargetFromURL();
@@ -3630,6 +3778,8 @@ export {
   shareSheetCopyLink,
   shareSheetDeviceShare,
   shareVerse,
+  showResetPasswordRequest,
+  showSignIn,
   skipAudio,
   skipDailyReadingTts,
   startEditChurchResource,
@@ -3693,6 +3843,14 @@ export {
 // test asks for it) is what keeps these out of the shipped file.
 function __setCurrentUserForTest(user) { currentUser = user; }
 function __setCurrentPlanStartDateForTest(date) { currentPlanStartDate = date; }
+// Lets a test skip past the (large, real-Supabase-and-DOM-heavy)
+// initializeApp() path that checkUserSession() otherwise calls the first
+// time it ever runs with no session -- useful for a test that only cares
+// about confirming something ELSE checkUserSession() does (or, as with
+// handleAuth's reset-confirm branch, just that checkUserSession() was
+// correctly called at all afterward) without needing to fully reproduce
+// the whole app's real DOM.
+function __setAppHasInitializedForTest(val) { appHasInitialized = val; }
 // A getter, not window.currentPlanViewDayNumber, for the same reason
 // shared/cords.js's __getCordPollTimerForTest and shared/records.js's
 // __getUserRecordsMapForTest exist: currentPlanViewDayNumber is a

@@ -65,7 +65,11 @@ import {
     }
     export function cordAvatarInitial(name) {
       const trimmed = (name || '').trim();
-      return trimmed ? trimmed.charAt(0).toUpperCase() : '?';
+      // Escaped even though it's just a single character (only the first
+      // one is ever kept) -- a lone "<" or "&" is unlikely to form a real
+      // exploit on its own, but it costs nothing to close this properly
+      // rather than leave it as a known, if minor, gap.
+      return trimmed ? escapeHtml(trimmed.charAt(0).toUpperCase()) : '?';
     }
     // seed should be something stable per-person (a user id) when available, so a
     // given person's avatar color doesn't shift if their display name changes.

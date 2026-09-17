@@ -87,6 +87,37 @@ function createSupabaseMock(overrides = {}) {
         };
       },
     },
+    // Real app.js calls supabaseClient.auth.onAuthStateChange(...) once,
+    // unconditionally, at the top level (not inside DOMContentLoaded) --
+    // so unlike checkUserSession() (which only runs from inside that
+    // listener, and so never actually fires during a test unless something
+    // explicitly dispatches it), this one runs on every single test that
+    // loads the app bundle at all. Without a real .auth object here, that
+    // call would throw "Cannot read properties of undefined" and break
+    // every test in the suite, not just ones about auth specifically.
+    // Each method here returns a reasonable empty/success default; a test
+    // that needs to exercise real auth behavior should override the
+    // specific method it needs directly on window.supabaseClient.auth
+    // after loadApp() resolves, rather than this file trying to anticipate
+    // every possible auth scenario up front.
+    auth: {
+      onAuthStateChange(callback) {
+        calls.push({ op: 'onAuthStateChange' });
+        // Stored (not just recorded as a call) so a test can fire the REAL
+        // callback app.js registered -- confirming the actual wiring (does
+        // this callback really call showSetNewPasswordForm on
+        // PASSWORD_RECOVERY?), not just that showSetNewPasswordForm works
+        // when called directly and separately.
+        client.auth.__registeredCallback = callback;
+        return { data: { subscription: { unsubscribe() {} } } };
+      },
+      getSession() { calls.push({ op: 'getSession' }); return Promise.resolve({ data: { session: null }, error: null }); },
+      signInWithPassword(args) { calls.push({ op: 'signInWithPassword', args }); return Promise.resolve({ data: { user: null, session: null }, error: null }); },
+      signUp(args) { calls.push({ op: 'signUp', args }); return Promise.resolve({ data: { user: null, session: null }, error: null }); },
+      signOut() { calls.push({ op: 'signOut' }); return Promise.resolve({ error: null }); },
+      updateUser(args) { calls.push({ op: 'updateUser', args }); return Promise.resolve({ data: { user: null }, error: null }); },
+      resetPasswordForEmail(email, args) { calls.push({ op: 'resetPasswordForEmail', email, args }); return Promise.resolve({ data: {}, error: null }); },
+    },
   };
   return { client, calls };
 }
