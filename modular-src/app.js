@@ -1728,6 +1728,11 @@ export {
       renderSearchResults();
     }
 
+    function goToSearchResultsPage(pageNumber) {
+      currentPage = pageNumber;
+      renderSearchResults();
+    }
+
     function renderSearchResults() {
       isSearchResultsShowing = true;
       const start = (currentPage - 1) * RESULTS_PER_PAGE;
@@ -1745,7 +1750,7 @@ export {
       const totalPages = Math.ceil(keywordResults.length / RESULTS_PER_PAGE);
       let pageHtml = '';
       for (let i = 1; i <= totalPages; i++) {
-        pageHtml += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="currentPage=${i}; renderSearchResults();">${i}</button>`;
+        pageHtml += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToSearchResultsPage(${i})">${i}</button>`;
       }
       document.getElementById('pagination-area').innerHTML = pageHtml;
     }
@@ -3731,6 +3736,7 @@ export {
   galleryNextSlide,
   galleryPrevSlide,
   goToPlanNotificationTarget,
+  goToSearchResultsPage,
   handleAuth,
   handleBookAdminPresenterPick,
   handleBookAdminSelectChange,
@@ -3918,6 +3924,7 @@ function __setCurrentPlanStartDateForTest(date) { currentPlanStartDate = date; }
 // the whole app's real DOM.
 function __setAppHasInitializedForTest(val) { appHasInitialized = val; }
 function __setPendingShareTargetForTest(target) { pendingShareTarget = target; }
+function __setKeywordResultsForTest(results) { keywordResults = results; }
 // A getter, not window.currentPlanViewDayNumber, for the same reason
 // shared/cords.js's __getCordPollTimerForTest and shared/records.js's
 // __getUserRecordsMapForTest exist: currentPlanViewDayNumber is a

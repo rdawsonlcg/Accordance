@@ -2220,6 +2220,7 @@ var __App = (() => {
     galleryNextSlide: () => galleryNextSlide,
     galleryPrevSlide: () => galleryPrevSlide,
     goToPlanNotificationTarget: () => goToPlanNotificationTarget,
+    goToSearchResultsPage: () => goToSearchResultsPage,
     handleAuth: () => handleAuth,
     handleBookAdminPresenterPick: () => handleBookAdminPresenterPick,
     handleBookAdminSelectChange: () => handleBookAdminSelectChange,
@@ -10125,6 +10126,10 @@ ${url}`;
     currentPage = 1;
     renderSearchResults();
   }
+  function goToSearchResultsPage(pageNumber) {
+    currentPage = pageNumber;
+    renderSearchResults();
+  }
   function renderSearchResults() {
     isSearchResultsShowing = true;
     const start = (currentPage - 1) * RESULTS_PER_PAGE;
@@ -10140,7 +10145,7 @@ ${url}`;
     const totalPages = Math.ceil(keywordResults.length / RESULTS_PER_PAGE);
     let pageHtml = "";
     for (let i = 1; i <= totalPages; i++) {
-      pageHtml += `<button class="page-btn ${i === currentPage ? "active" : ""}" onclick="currentPage=${i}; renderSearchResults();">${i}</button>`;
+      pageHtml += `<button class="page-btn ${i === currentPage ? "active" : ""}" onclick="goToSearchResultsPage(${i})">${i}</button>`;
     }
     document.getElementById("pagination-area").innerHTML = pageHtml;
   }
